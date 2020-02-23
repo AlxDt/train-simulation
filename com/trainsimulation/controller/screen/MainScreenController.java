@@ -16,8 +16,13 @@ import javafx.scene.layout.BorderPane;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 
 public class MainScreenController extends ScreenController {
+    // Used to manage how the add train button is activated with respect to when the trains have left the depot and
+    // entered a station
+    public static final Semaphore ARM_ADD_TRAIN_BUTTON = new Semaphore(0);
+
     // Used to store the current canvas object
     private static final List<Canvas> CANVASES = new ArrayList<>();
 
@@ -108,10 +113,27 @@ public class MainScreenController extends ScreenController {
         // Check if it is possible to spawn a new train by checking whether there are inactive trains left in the active
         // train system
         if (inactiveTrains.size() > 0) {
+            // Temporarily disable this button to prevent race conditions concerning the situations when a train has
+            // been added to a segment in the the system without the previous one not having left it yet
+            addTrainButton.setDisable(true);
+
             // Get a train from that list of inactive trains and activate it
             Train train = inactiveTrains.remove(0);
-
             train.activate(activeTrains);
+
+            // Run a quick thread to monitor the rearming of the add train button
+            // This code is in a separate thread to avoid choking the JavaFX UI thread
+            new Thread(() -> {
+                try {
+                    // Wait until the train enters a station from the depot for the first time
+                    MainScreenController.ARM_ADD_TRAIN_BUTTON.acquire();
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+
+                // Eventually enable this button once the train has entered a station from the depot
+                addTrainButton.setDisable(false);
+            }).start();
         } else {
             // TODO: Display a dialog saying it is not possible
             System.out.println("There are no more trains for this train system.");

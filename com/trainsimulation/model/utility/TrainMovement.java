@@ -6,12 +6,14 @@ import com.trainsimulation.model.core.environment.infrastructure.track.Segment;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.TrainCarriage;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.Semaphore;
 
 // Contains information regarding the train's movement
 public class TrainMovement {
+    // Manages the synchronization between different train movements
+    private static final Semaphore MOVEMENT_LOCK = new Semaphore(1);
+
     // Denotes the waiting time of the train (s)
     private final int waitingTime;
 
@@ -75,15 +77,17 @@ public class TrainMovement {
 
     // Make this train move forward while looking forward to see if there is nothing in its way
     // In the train's movement, take the previous action into account
-    public synchronized TrainAction move(TrainAction previousAction) {
+    public TrainAction move(TrainAction previousAction) throws InterruptedException {
+        // Only one train may move at a time to avoid race conditions
+        TrainMovement.MOVEMENT_LOCK.acquire();
+
         // Before doing anything, check whether moving is even possible in the first place
         // Lookahead distance (in m)
         final int lookaheadDistance = 100;
-
-        TrainAction lookAheadResult = lookahead(lookaheadDistance);
+        TrainAction lookaheadResult = lookahead(lookaheadDistance);
 
         // If the action is to stop for a station, take into account whether the train was already asked to stop before
-        if (lookAheadResult == TrainAction.STOP_FOR_STATION) {
+        if (lookaheadResult == TrainAction.STOP_FOR_STATION) {
             // Request a draw
             GraphicsController.requestDraw(MainScreenController.getActiveCanvas().getGraphicsContext2D(),
                     MainScreenController.getActiveTrainSystem());
@@ -91,9 +95,15 @@ public class TrainMovement {
             // Check if the previous action already was to stop for a station
             // If it was, make the train move forward, as it has already waited
             if (previousAction != TrainAction.STOP_FOR_STATION) {
+                // Signal to all trains waiting to process their movement that they may now proceed to do so
+                TrainMovement.MOVEMENT_LOCK.release();
+
                 return TrainAction.STOP_FOR_STATION;
             }
-        } else if (lookAheadResult == TrainAction.STOP_FOR_TRAIN) {
+        } else if (lookaheadResult == TrainAction.STOP_FOR_TRAIN) {
+            // Signal to all trains waiting to process their movement that they may now proceed to do so
+            TrainMovement.MOVEMENT_LOCK.release();
+
             // If the action was to stop because of a train ahead, just draw this train's position and stop
             GraphicsController.requestDraw(MainScreenController.getActiveCanvas().getGraphicsContext2D(),
                     MainScreenController.getActiveTrainSystem());
@@ -105,76 +115,59 @@ public class TrainMovement {
         // TODO: Consider acceleration/deceleration
         // Compute the location of each train carriage after moving forward by the specified velocity
         // Move each carriage one by one
-        List<TrainCarriage> trainCarriages = this.train.getTrainCarriages();
+        synchronized (this.train.getTrainCarriages()) {
+            List<TrainCarriage> trainCarriages = this.train.getTrainCarriages();
 
-        for (TrainCarriage trainCarriage : trainCarriages) {
-            // Get the current train carriage
-            // Then get its location information
-            TrainCarriageLocation trainCarriageLocation = trainCarriage.getTrainCarriageLocation();
+            for (TrainCarriage trainCarriage : trainCarriages) {
+                // Get the current train carriage
+                // Then get its location information
+                TrainCarriageLocation trainCarriageLocation = trainCarriage.getTrainCarriageLocation();
 
-            // Get the current clearance of this carriage
-            double segmentClearance = trainCarriageLocation.getSegmentClearance();
+                // Get the current clearance of this carriage
+                double segmentClearance = trainCarriageLocation.getSegmentClearance();
 
-            // Get the current location of this carriage
-            Segment currentSegment = trainCarriageLocation.getSegmentLocation();
+                // Get the current location of this carriage
+                Segment currentSegment = trainCarriageLocation.getSegmentLocation();
 
-            // Get the clearing distance (m/s) given the velocity
-            double clearedDistance = this.maxVelocity / 3600.0 * 1000.0;
+                // Get the clearing distance (m/s) given the velocity
+                double clearedDistance = this.maxVelocity / 3600.0 * 1000.0;
 
-            // Move this carriage; change its clearance
-            segmentClearance += clearedDistance;
+                // Move this carriage; change its clearance
+                segmentClearance += clearedDistance;
 
-            // If the clearance is at least 100% of the current segment, move this carriage to the next segment
-            if (segmentClearance / currentSegment.getLength() >= 1.0) {
-                // Remove this carriage from its current segment
-                // By this point, this carriage should be at the front of this segment
-                currentSegment.getTrainQueue().remove();
+                // If the clearance is at least 100% of the current segment, move this carriage to the next segment
+                if (segmentClearance / currentSegment.getLength() >= 1.0) {
+                    // Remove this carriage from its current segment
+                    // By this point, this carriage should be at the front of this segment
+                    currentSegment.getTrainQueue().removeFirstTrainCarriage();
 
-                // Move the new location of this carriage until there is no more excess clearance
-                do {
-                    // Set the clearance of this carriage relative to the next segment
-                    segmentClearance -= currentSegment.getLength();
+                    // Move the new location of this carriage until there is no more excess clearance
+                    do {
+                        // Set the clearance of this carriage relative to the next segment
+                        segmentClearance -= currentSegment.getLength();
 
-                    // TODO: Do not assume 0 index
-                    currentSegment = currentSegment.getTo().getOutSegments().get(0);
-                } while (segmentClearance / currentSegment.getLength() >= 1.0);
+                        // TODO: Do not assume 0 index
+                        currentSegment = currentSegment.getTo().getOutSegments().get(0);
+                    } while (segmentClearance / currentSegment.getLength() >= 1.0);
 
-                // Add this carriage to the next segment
-                currentSegment.getTrainQueue().add(trainCarriage);
+                    // Add this carriage to the next segment
+                    currentSegment.getTrainQueue().insertTrainCarriage(trainCarriage);
+                }
+
+                // Set the clearances and locations of this carriage
+                trainCarriageLocation.setSegmentClearance(segmentClearance);
+                trainCarriageLocation.setSegmentLocation(currentSegment);
             }
-
-            // Set the clearances and locations of this carriage
-            trainCarriageLocation.setSegmentClearance(segmentClearance);
-            trainCarriageLocation.setSegmentLocation(currentSegment);
         }
+
+        // Signal to all trains waiting to process their movement that they may now proceed to do so
+        TrainMovement.MOVEMENT_LOCK.release();
 
         // Request a draw
         GraphicsController.requestDraw(MainScreenController.getActiveCanvas().getGraphicsContext2D(),
                 MainScreenController.getActiveTrainSystem());
 
         return TrainAction.PROCEED;
-
-//        if (lookAheadResult == null) {
-//            System.out.println(this.segmentClearances.getFirst() / this.trainCarriageLocations.getFirst()
-//                    .getLength());
-//
-//            if (this.segmentClearances.getFirst() / this.trainCarriageLocations.getFirst()
-//                    .getLength() > stationClearPercentage) {
-//                // Request a draw
-//                GraphicsController.requestDraw(MainScreenController.getActiveCanvas().getGraphicsContext2D(),
-//                        MainScreenController.getActiveTrainSystem());
-//
-//                return null;
-//            }
-//        } else if (!lookAheadResult) {
-//            // Request a draw
-//            GraphicsController.requestDraw(MainScreenController.getActiveCanvas().getGraphicsContext2D(),
-//                    MainScreenController.getActiveTrainSystem());
-//
-//            return false;
-//        }
-//
-//        return true;
     }
 
     // Makes this train wait for the necessary waiting time
@@ -193,7 +186,7 @@ public class TrainMovement {
     }
 
     // Look ahead a certain distance away to see if it's safe to continue moving
-    private synchronized TrainAction lookahead(final int lookaheadLimit) {
+    private TrainAction lookahead(final int lookaheadLimit) {
         // Get the front carriage of this train
         TrainCarriage frontCarriage = this.getTrain().getHead();
 
@@ -204,7 +197,7 @@ public class TrainMovement {
         Segment currentSegment = frontCarriage.getTrainCarriageLocation().getSegmentLocation();
 
         // Get the train queue of the current segment
-        ConcurrentLinkedDeque<TrainCarriage> trainQueue = currentSegment.getTrainQueue();
+        TrainQueue trainQueue = currentSegment.getTrainQueue();
 
         double separation;
         int nextCarriageIndex;
@@ -212,17 +205,12 @@ public class TrainMovement {
         // Check if this carriage is at the head of the train queue of this segment (i.e., this carriage is the carriage
         // furthest along this segment; the first to leave this segment)
         // If it isn't, then look for the distance between this carriage and the next carriage in this segment
-        if (!(trainQueue.getFirst() == frontCarriage)) {
+        if (!(trainQueue.getFirstTrainCarriage() == frontCarriage)) {
             // Look for the next train carriage in this segment (there should be one)
             // The next carriage following this carriage is the one directly in front of this carriage in the train
             // queue
-            TrainCarriage[] trainQueueAsArray = trainQueue.toArray(new TrainCarriage[0]);
-
-            nextCarriageIndex = Arrays.asList(trainQueueAsArray).indexOf(frontCarriage) - 1;
-//            nextCarriageIndex = trainQueue.indexOf(frontCarriage) - 1;
-
-            nextCarriage = trainQueueAsArray[nextCarriageIndex];
-//            nextCarriage = trainQueue.get(nextCarriageIndex);
+            nextCarriageIndex = trainQueue.getIndexOfTrainCarriage(frontCarriage) - 1;
+            nextCarriage = trainQueue.getTrainCarriage(nextCarriageIndex);
 
             // Compute the distance between this carriage and that
             separation = computeDistance(frontCarriage, nextCarriage, lookaheadLimit);
@@ -230,43 +218,6 @@ public class TrainMovement {
             // If this carriage is the first in this queue, look for the distance between this carriage and the next
             // carriage in the segment where the lookahead distance falls on
             separation = computeDistance(frontCarriage, null, lookaheadLimit);
-//            metersAhead += currentSegment.getLength() - frontCarriage.getTrainCarriageLocation().getSegmentClearance();
-//
-//            // Look for the segment where the lookahead distance falls on
-//            do {
-//                // Change the current segment
-//                // TODO: Do not assume 0 index
-//                currentSegment = currentSegment.getTo().getOutSegments().get(0);
-//
-//                // Look for the next train carriage in this segment, if any
-//                List<TrainCarriage> currentSegmentTrainQueue = currentSegment.getTrainQueue();
-//
-//                // If there is someone on this segment, compute the distance between this train and that train
-//                if (!currentSegmentTrainQueue.isEmpty()) {
-//                    nextCarriageIndex = currentSegmentTrainQueue.size() - 1;
-//                    nextCarriage = currentSegmentTrainQueue.get(nextCarriageIndex);
-//
-//                    separation = computeDistance(frontCarriage, nextCarriage);
-//
-//                    // If the separation between the next train and the current train is less than the lookahead
-//                    // distance, halt
-//                    // Return false to indicate a need to stop
-//                    if (separation <= lookaheadLimit) {
-//                        return false;
-//                    }
-//                }
-//
-//                // Check if this segment is owned by a station
-//                if (currentSegment.getStation() != null) {
-//                    return null;
-//                }
-//
-//                // Add the length of the segment to the distance looked forward
-//                metersAhead += currentSegment.getLength();
-//            } while (metersAhead <= lookaheadLimit);
-//
-//            // If this point is reached, all is clear
-//            return true;
         }
 
         // If the separation between the next train and the current train is less than the lookahead distance, halt
@@ -307,8 +258,8 @@ public class TrainMovement {
     // to be found
     // If the distance between the two trains turns out to be more than the lookahead limit, just return a best effort
     // computation to avoid wasting time
-    private synchronized double computeDistance(TrainCarriage currentTrainHead, TrainCarriage nextTrainTail,
-                                                int lookaheadLimit) {
+    private double computeDistance(TrainCarriage currentTrainHead, TrainCarriage nextTrainTail,
+                                   int lookaheadLimit) {
         double distance;
 
         // If the two trains are in the same segment, just simply compute the distance between them
@@ -357,9 +308,9 @@ public class TrainMovement {
 
                 // Check if the next segment contains a train
                 // If it does, wrap up with the computation of the accumulated distance of empty segments in between
-                if (!currentTrainSegment.getTrainQueue().isEmpty()) {
+                if (!currentTrainSegment.getTrainQueue().isTrainQueueEmpty()) {
                     // Take note of the next train
-                    nextTrainTail = currentTrainSegment.getTrainQueue().getLast();
+                    nextTrainTail = currentTrainSegment.getTrainQueue().getLastTrainCarriage();
 
                     // Stop looking for more
                     break;

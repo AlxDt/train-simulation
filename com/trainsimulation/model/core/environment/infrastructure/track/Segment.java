@@ -2,9 +2,7 @@ package com.trainsimulation.model.core.environment.infrastructure.track;
 
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
-import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.TrainCarriage;
-
-import java.util.concurrent.ConcurrentLinkedDeque;
+import com.trainsimulation.model.utility.TrainQueue;
 
 // Segments are structures in a train line where trains move on; they connect train stations with other stations
 public class Segment extends Track {
@@ -12,7 +10,7 @@ public class Segment extends Track {
     private final int length;
 
     // Represents the trains (specifically, the train carriages) that are currently on this segment
-    private final ConcurrentLinkedDeque<TrainCarriage> trainQueue;
+    private final TrainQueue trainQueue;
 
     // Represents the name of the segment
     private String name;
@@ -29,25 +27,13 @@ public class Segment extends Track {
     // Represents the platform hub this segment is on (null if none)
     private PlatformHub platformHub;
 
-//    public Segment(Segment segment) {
-//        super(segment.getTrainSystem());
-//
-//        this.length = segment.getLength();
-//        this.trainQueue = segment.getTrainQueue();
-//        this.name = segment.getName();
-//        this.curved = segment.isCurved();
-//        this.to = segment.getTo();
-//        this.station = segment.getStation();
-//        this.platformHub = segment.getPlatformHub();
-//    }
-
     Segment(TrainSystem trainSystem, int length) {
         super(trainSystem);
 
         this.length = length;
         this.curved = false;
 
-        this.trainQueue = new ConcurrentLinkedDeque<>();
+        this.trainQueue = new TrainQueue();
     }
 
     public int getLength() {
@@ -78,7 +64,7 @@ public class Segment extends Track {
         this.station = station;
     }
 
-    public ConcurrentLinkedDeque<TrainCarriage> getTrainQueue() {
+    public TrainQueue getTrainQueue() {
         return trainQueue;
     }
 

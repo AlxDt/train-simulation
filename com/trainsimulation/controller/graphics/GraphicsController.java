@@ -6,14 +6,13 @@ import com.trainsimulation.model.core.environment.infrastructure.track.Junction;
 import com.trainsimulation.model.core.environment.infrastructure.track.Segment;
 import com.trainsimulation.model.core.environment.infrastructure.track.Track;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
-import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.TrainCarriage;
+import com.trainsimulation.model.utility.TrainQueue;
 import javafx.application.Platform;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class GraphicsController extends Controller {
     // Send a request to draw on the canvas
@@ -38,8 +37,6 @@ public class GraphicsController extends Controller {
         final double initialX = CANVAS_WIDTH * 0.02;
         final double initialY = CANVAS_HEIGHT * 0.5;
 
-        final double STATION_HEIGHT = 15.0;
-
         // A factor used to scale down the real-world train line dimensions
         final double scaleDownFactor = 0.075;
 
@@ -56,7 +53,10 @@ public class GraphicsController extends Controller {
         final double LINE_WIDTH = 3.0;
 
         // The size of the trains
-        final double trainGraphicsDiameter = 4.0;
+        final double trainGraphicsDiameter = LINE_WIDTH * 1.1;
+
+        // The height of the station
+        final double STATION_HEIGHT = LINE_WIDTH * 4.0;
 
         // Prepare the colors and fonts
         Color color = toColor(trainSystem.getTrainSystemInformation().getColor());
@@ -97,7 +97,7 @@ public class GraphicsController extends Controller {
         Segment segment = station.getPlatforms().get(drawingDirection).getPlatformHub().getPlatformSegment();
 
         // Take note of the trains in a segment
-        ConcurrentLinkedDeque<TrainCarriage> trainQueue;
+        TrainQueue trainQueue;
 
         // Change some variables depending on the direction
         while (true) {
@@ -120,28 +120,18 @@ public class GraphicsController extends Controller {
                         * scaleDownFactor, yDirection);
             }
 
-            // Draw the trains on this segment (carriage by carriage), if any
-            trainQueue = segment.getTrainQueue();
+            synchronized (segment.getTrainQueue()) {
+                // Draw the trains on this segment (carriage by carriage), if any
+                trainQueue = segment.getTrainQueue();
 
-            // TODO: Establish train constants (e.g., train color)
-            graphicsContext.setFill(Color.PURPLE);
+                // TODO: Establish train constants (e.g., train color)
+                graphicsContext.setFill(Color.SILVER);
 
-            for (int carriageInSegmentIndex = 0; carriageInSegmentIndex < trainQueue.size(); carriageInSegmentIndex++) {
-                if (station != null && carriageInSegmentIndex == 0) {
-//                    System.out.println("take note " + station.getName());
-                }
-
-//                System.out.println("x: " + trainQueue.get(carriageIndex).getParentTrain()
-//                        .getTrainMovement().getSegmentClearances().get(carriageIndex));
-
-
-                TrainCarriage[] trainQueueAsArray = trainQueue.toArray(new TrainCarriage[0]);
-
-                graphicsContext.fillOval(x + directionMultiplier * (trainQueueAsArray[carriageInSegmentIndex]
-                        .getTrainCarriageLocation().getSegmentClearance()) * scaleDownFactor, yDirection - (
-                        trainGraphicsDiameter) * 0.5, trainGraphicsDiameter, trainGraphicsDiameter);
-                if (station != null && carriageInSegmentIndex == 0) {
-//                    System.out.println("end note");
+                for (int carriageInSegmentIndex = 0; carriageInSegmentIndex < trainQueue.getTrainQueueSize();
+                     carriageInSegmentIndex++) {
+                    graphicsContext.fillOval(x + directionMultiplier * (trainQueue.getTrainCarriage(
+                            carriageInSegmentIndex).getTrainCarriageLocation().getSegmentClearance()) * scaleDownFactor,
+                            yDirection - (trainGraphicsDiameter) * 0.5, trainGraphicsDiameter, trainGraphicsDiameter);
                 }
             }
 

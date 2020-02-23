@@ -1,6 +1,7 @@
 package com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset;
 
 import com.trainsimulation.controller.Main;
+import com.trainsimulation.controller.screen.MainScreenController;
 import com.trainsimulation.model.core.agent.Agent;
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.infrastructure.track.Segment;
@@ -86,9 +87,13 @@ public class Train extends TrainSet implements Agent {
             // The first action was to stop - as it was in a depot
             TrainMovement.TrainAction trainAction = TrainMovement.TrainAction.STOP_FOR_STATION;
 
+            // Keep track of whether the train has entered its first station from the depot
+            boolean hasEnteredStationFromDepot = false;
+
             // Exit the depot
             while (true) {
-                // Move until it is commanded otherwise (when it stops for a station or for another train)
+                // Move until it is commanded otherwise (when it stops for a station or to avoid colliding with another
+                // train)
                 do {
                     // Take note of the action command
                     trainAction = this.trainMovement.move(trainAction);
@@ -98,143 +103,25 @@ public class Train extends TrainSet implements Agent {
 //                    System.out.println("moving");
                 } while (trainAction != TrainMovement.TrainAction.STOP_FOR_STATION);
 
+                // If it hasn't been noted yet, the train has now entered its first station from the depot
+                if (!hasEnteredStationFromDepot) {
+                    hasEnteredStationFromDepot = true;
+
+                    // Tell the GUI to enable the add train button again
+                    MainScreenController.ARM_ADD_TRAIN_BUTTON.release();
+                }
+
                 // Wait in the station for the specified amount of time
                 while (this.trainMovement.waitAtStation()) {
                     // Pause the thread
                     Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS);
 //                    System.out.println("waiting");
                 }
-//
-//                System.out.println("waited");
             }
-
-//            // Clear this segment and take note of the excess clearance
-//            // TODO: Add/remove train queue should be moved to segment clearance method
-//            segment.getTrainQueue().add(this);
-//            this.metersElapsed = clearSegment(this.metersElapsed, segment.getLength(), METERS_PER_SECOND);
-//            segment.getTrainQueue().remove();
-//
-//            // Begin traversing the system
-//            while (true) {
-//                // While the current segment does not belong to a station, keep going to the next segment
-//                while (segment.getStation() == null) {
-//                    // TODO: Draw train position
-//                    GraphicsController.requestDraw(CANVAS.getGraphicsContext2D(), depot);
-//
-//                    // Pause the thread
-//                    Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS);
-//
-//                    // Clear this segment
-//                    segment.getTrainQueue().add(this);
-//                    this.metersElapsed = clearSegment(this.metersElapsed, segment.getLength(), METERS_PER_SECOND);
-//                    segment.getTrainQueue().remove();
-//
-//                    // Go to the next segment
-//                    segment = segment.getTo().getOutSegments().get(0);
-//                }
-//
-//                // The train is now in a station - wait for the specified amount of time
-//                // Only this train will have access to this station at this time
-//                segment.getPlatformHub().getInConnector().getSignal().acquire();
-//
-//                System.out.println(segment.getStation().getName());
-//
-//                // TODO: Draw train position
-//                GraphicsController.requestDraw(CANVAS.getGraphicsContext2D(), depot);
-//
-//                for (int waitedTime = 0; waitedTime < WAITING_TIME_SECONDS; waitedTime++) {
-//                    Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS);
-//                }
-//
-//                // Following trains may now enter this station
-//                segment.getPlatformHub().getInConnector().getSignal().release();
-//
-//                // Exit the station
-//                segment = segment.getTo().getOutSegments().get(0);
-//            }
-
-//            // Test if a train goes around in a perfect loop
-//            Station current = stations.get(stations.size() - 1);
-//            String direction = "SB";
-//
-//            Segment segment;
-//
-//            while (true) {
-//                current.getPlatforms().get(direction).getPlatformHub().getInConnector().getSignal().acquire();
-//                System.out.println("[" + Thread.currentThread().getName() + " @ " + current.getName() + "] " + direction);
-//
-////                    System.out.print("\tWaiting...");
-//
-//                for (int count = 30; count >= 1; count--) {
-////                        System.out.print(count + "..");
-//                    Thread.sleep(25);
-//                }
-//
-////                    System.out.println();
-////                    System.out.println("\tDeparted");
-//
-//                System.out.println("waiting");
-//                Thread.sleep(3000);
-//                System.out.println("waited");
-//
-//                current.getPlatforms().get(direction).getPlatformHub().getInConnector().getSignal().release();
-//                segment = current.getPlatforms().get(direction).getPlatformHub().getOutConnector().getOutSegments().get(0);
-//
-//                do {
-//                    metersElapsed = 0;
-//
-////                        System.out.print(">Traveling " + direction + " along a " + segment.getLength() + " m long segment...");
-//                    while (metersElapsed / segment.getLength() <= 1.0) {
-////                    System.out.println("Completed " + metersElapsed + " m of " + segment.getLength() + " length of segment "
-////                            + "(" + metersElapsed / segment.getLength() * 100.0 + "%)");
-////                            System.out.print(".");
-//                        Thread.sleep(25);
-//
-//                        metersElapsed += METERS_PER_SECOND;
-//                    }
-//
-////                        System.out.println();
-//
-//                    segment = segment.getTo().getOutSegments().get(0);
-//                    current = segment.getStation();
-//
-//                    if (current == null) {
-//                        if (direction.equals("NB")) {
-//                            direction = "SB";
-//                        } else {
-//                            direction = "NB";
-//                        }
-//
-////                            System.out.println(">End of line; switching to " + direction);
-//                    }
-//                } while (current == null);
-//            }
         } catch (InterruptedException ex) {
             ex.printStackTrace();
         }
     }
-
-//    // Clear a single segment then return the excess clearance
-//    // TODO: Move to TrainMovement class
-//    private double clearSegment(double initialClearance, double segmentLength, final double velocity)
-//            throws InterruptedException {
-//        this.metersElapsed = initialClearance;
-//
-//        while (this.metersElapsed / segmentLength <= 1.0) {
-//            // TODO: Draw train position
-//            GraphicsController.requestDraw(CANVAS.getGraphicsContext2D(), depot);
-//
-//            //System.out.println(this.metersElapsed);
-//
-//            // Pause the thread
-//            Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS);
-//
-//            this.metersElapsed += velocity;
-//        }
-//
-//        // Take note of the excess clearance
-//        return metersElapsed - segmentLength;
-//    }
 
     // Activate a train
     public void activate(List<Train> activeTrains) {
@@ -255,7 +142,7 @@ public class Train extends TrainSet implements Agent {
         // Compute for the location of each train carriage
         for (TrainCarriage trainCarriage : this.trainCarriages) {
             // Add this carriage to this segment
-            segment.getTrainQueue().add(trainCarriage);
+            segment.getTrainQueue().insertTrainCarriage(trainCarriage);
 
             // Set the clearance of this segment
             trainCarriage.getTrainCarriageLocation().setSegmentClearance(headClearance - carriageOffset);
