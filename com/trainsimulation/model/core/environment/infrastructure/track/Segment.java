@@ -18,7 +18,10 @@ public class Segment extends Track {
     // Represents whether this segment is curved or not
     private boolean curved;
 
-    // Represents the segment connector where it goes to
+    // Represents the junction where it came from
+    private Junction from;
+
+    // Represents the junction where it goes to
     private Junction to;
 
     // Represents the station owner of this segment (null if none)
@@ -46,6 +49,14 @@ public class Segment extends Track {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Junction getFrom() {
+        return from;
+    }
+
+    public void setFrom(Junction from) {
+        this.from = from;
     }
 
     public Junction getTo() {

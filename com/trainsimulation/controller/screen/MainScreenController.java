@@ -12,6 +12,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,7 +25,7 @@ public class MainScreenController extends ScreenController {
     public static final Semaphore ARM_ADD_TRAIN_BUTTON = new Semaphore(0);
 
     // Used to store the current canvas object
-    private static final List<Canvas> CANVASES = new ArrayList<>();
+    private static final List<StackPane> CANVASES = new ArrayList<>();
 
     // Used to store the current train system object
     private static final List<TrainSystem> TRAIN_SYSTEMS = new ArrayList<>();
@@ -44,7 +45,7 @@ public class MainScreenController extends ScreenController {
     @FXML
     private Button addTrainButton;
 
-    public static List<Canvas> getCanvases() {
+    public static List<StackPane> getCanvases() {
         return CANVASES;
     }
 
@@ -53,7 +54,7 @@ public class MainScreenController extends ScreenController {
     }
 
     // Get the active canvas
-    public static Canvas getActiveCanvas() {
+    public static StackPane getActiveCanvas() {
         return MainScreenController.getCanvases().get(MainScreenController.activeIndex);
     }
 
@@ -194,17 +195,24 @@ public class MainScreenController extends ScreenController {
 
         for (TrainSystem trainSystem : trainSystems) {
             // Create the tab, then add it to the tab pane
-            // Add a canvas to each tab as well
+            // Add canvases to each tab as well
             // This is where the visualizations will be drawn
             Tab tab = new Tab(trainSystem.getTrainSystemInformation().getName());
 
-            Canvas canvas = new Canvas(tabPane.getBoundsInParent().getWidth(), tabPane.getBoundsInParent().getHeight());
-            tab.setContent(canvas);
+            Canvas backgroundCanvas = new Canvas(tabPane.getBoundsInParent().getWidth(), tabPane.getBoundsInParent()
+                    .getHeight());
+            Canvas foregroundCanvas = new Canvas(tabPane.getBoundsInParent().getWidth(), tabPane.getBoundsInParent()
+                    .getHeight());
 
+            // Create a stack pane to handle the canvases
+            StackPane stackPane = new StackPane();
+            stackPane.getChildren().addAll(backgroundCanvas, foregroundCanvas);
+
+            tab.setContent(stackPane);
             tabPane.getTabs().add(tab);
 
             // Update the active elements
-            MainScreenController.getCanvases().add(canvas);
+            MainScreenController.getCanvases().add(stackPane);
             MainScreenController.getTrainSystems().add(trainSystem);
 
             updateActiveElements(tabPane.getSelectionModel().getSelectedIndex());
@@ -231,10 +239,10 @@ public class MainScreenController extends ScreenController {
 
         // For each tab (which contains a canvas), draw its train system
         for (int trainsystemindex = 0; trainsystemindex < tabPane.getTabs().size(); trainsystemindex++) {
-            Canvas canvas = getActiveCanvas();
+            StackPane canvases = getActiveCanvas();
 
             // Draw each train system onto its respective tab
-            GraphicsController.requestDraw(canvas.getGraphicsContext2D(), trainSystems.get(trainsystemindex));
+            GraphicsController.requestDraw(canvases, trainSystems.get(trainsystemindex), true);
         }
     }
 

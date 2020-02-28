@@ -82,6 +82,8 @@ public abstract class Track extends Infrastructure {
     // Connect two junctions with a segment
     private static void connect(Junction previousJunction, Segment segment, Junction nextJunction) {
         previousJunction.getOutSegments().add(segment);
+
+        segment.setFrom(previousJunction);
         segment.setTo(nextJunction);
     }
 

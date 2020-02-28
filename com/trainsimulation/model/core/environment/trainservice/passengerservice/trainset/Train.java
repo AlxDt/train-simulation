@@ -4,7 +4,6 @@ import com.trainsimulation.controller.Main;
 import com.trainsimulation.controller.screen.MainScreenController;
 import com.trainsimulation.model.core.agent.Agent;
 import com.trainsimulation.model.core.environment.TrainSystem;
-import com.trainsimulation.model.core.environment.infrastructure.track.Segment;
 import com.trainsimulation.model.core.environment.trainservice.maintenance.Depot;
 import com.trainsimulation.model.db.DatabaseQueries;
 import com.trainsimulation.model.db.entity.TrainCarriagesEntity;
@@ -82,10 +81,10 @@ public class Train extends TrainSet implements Agent {
         try {
             // Originate the train from the depot belonging to the train system where this train belongs to
             Depot depot = this.getTrainSystem().getDepot();
-            this.setTrainAtSegment(depot.getPlatformHub().getPlatformSegment());
+            this.trainMovement.setTrainAtSegment(depot.getPlatformHub().getPlatformSegment(), CARRIAGE_GAP);
 
             // The first action was to stop - as it was in a depot
-            TrainMovement.TrainAction trainAction = TrainMovement.TrainAction.STOP_FOR_STATION;
+            TrainMovement.TrainAction trainAction = TrainMovement.TrainAction.STATION_STOP;
 
             // Keep track of whether the train has entered its first station from the depot
             boolean hasEnteredStationFromDepot = false;
@@ -93,29 +92,43 @@ public class Train extends TrainSet implements Agent {
             // Exit the depot
             while (true) {
                 // Move until it is commanded otherwise (when it stops for a station or to avoid colliding with another
-                // train)
+                // train, or when it stops because of a signal)
                 do {
                     // Take note of the action command
                     trainAction = this.trainMovement.move(trainAction);
 
                     // Pause the thread
                     Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS);
-//                    System.out.println("moving");
-                } while (trainAction != TrainMovement.TrainAction.STOP_FOR_STATION);
+                } while (trainAction == TrainMovement.TrainAction.PROCEED);
 
-                // If it hasn't been noted yet, the train has now entered its first station from the depot
-                if (!hasEnteredStationFromDepot) {
-                    hasEnteredStationFromDepot = true;
+//                System.out.println(trainAction);
 
-                    // Tell the GUI to enable the add train button again
-                    MainScreenController.ARM_ADD_TRAIN_BUTTON.release();
-                }
+                // Do the specified actions (headway and signal stops do not have any explicit actions)
+                switch (trainAction) {
+                    case END_STOP:
+                        // Wait in the end for the specified amount of time
+                        while (this.trainMovement.waitAtEnd()) {
+                            // Pause the thread
+                            Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS);
+                        }
 
-                // Wait in the station for the specified amount of time
-                while (this.trainMovement.waitAtStation()) {
-                    // Pause the thread
-                    Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS);
-//                    System.out.println("waiting");
+                        break;
+                    case STATION_STOP:
+                        // If it hasn't been noted yet, the train has now entered its first station from the depot
+                        if (!hasEnteredStationFromDepot) {
+                            hasEnteredStationFromDepot = true;
+
+                            // Tell the GUI to enable the add train button again
+                            MainScreenController.ARM_ADD_TRAIN_BUTTON.release();
+                        }
+
+                        // Wait in the station for the specified amount of time
+                        while (this.trainMovement.waitAtStation()) {
+                            // Pause the thread
+                            Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS);
+                        }
+
+                        break;
                 }
             }
         } catch (InterruptedException ex) {
@@ -130,28 +143,5 @@ public class Train extends TrainSet implements Agent {
 
         // Finally, start the train thread
         new Thread(this).start();
-    }
-
-    // TODO: Move to train movement
-    // Set this train to a segment
-    public void setTrainAtSegment(Segment segment) {
-        // Set in such a way that the train is just about to clear this segment
-        final double headClearance = segment.getLength();
-        double carriageOffset = 0.0;
-
-        // Compute for the location of each train carriage
-        for (TrainCarriage trainCarriage : this.trainCarriages) {
-            // Add this carriage to this segment
-            segment.getTrainQueue().insertTrainCarriage(trainCarriage);
-
-            // Set the clearance of this segment
-            trainCarriage.getTrainCarriageLocation().setSegmentClearance(headClearance - carriageOffset);
-
-            // Set the location of this carriage to this segment
-            trainCarriage.getTrainCarriageLocation().setSegmentLocation(segment);
-
-            // Increment the offset
-            carriageOffset += trainCarriage.getLength() + CARRIAGE_GAP;
-        }
     }
 }

@@ -8,7 +8,9 @@ import com.trainsimulation.model.core.environment.infrastructure.track.Track;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.utility.TrainQueue;
 import javafx.application.Platform;
+import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 
@@ -16,21 +18,30 @@ import java.util.Set;
 
 public class GraphicsController extends Controller {
     // Send a request to draw on the canvas
-    public static void requestDraw(GraphicsContext graphicsContext, TrainSystem trainSystem) {
+    public static void requestDraw(StackPane canvases, TrainSystem trainSystem, boolean background) {
         Platform.runLater(() -> {
             // Tell the JavaFX thread that we'd like to draw on the canvas
-            draw(graphicsContext, trainSystem);
+            draw(canvases, trainSystem, background);
         });
     }
 
     // Draw all that is needed in the canvas
-    private static void draw(GraphicsContext graphicsContext, TrainSystem trainSystem) {
-        // Get the height and width of the canvas
-        final double CANVAS_WIDTH = graphicsContext.getCanvas().getWidth();
-        final double CANVAS_HEIGHT = graphicsContext.getCanvas().getHeight();
+    private static void draw(StackPane canvases, TrainSystem trainSystem, boolean background) {
+        // Get the canvases and their graphics contexts
+        final Canvas backgroundCanvas = (Canvas) canvases.getChildren().get(0);
+        final Canvas foregroundCanvas = (Canvas) canvases.getChildren().get(1);
 
-        // Clear everything
-        graphicsContext.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        final GraphicsContext backgroundGraphicsContext = backgroundCanvas.getGraphicsContext2D();
+        final GraphicsContext foregroundGraphicsContext = foregroundCanvas.getGraphicsContext2D();
+
+        // Get the height and width of the canvases
+        final double CANVAS_WIDTH = backgroundCanvas.getWidth();
+        final double CANVAS_HEIGHT = backgroundCanvas.getHeight();
+
+        // Clear everything in the foreground canvas, if all dynamic elements are to be drawn
+        if (!background) {
+            foregroundGraphicsContext.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        }
 
         // TODO: Dynamically compute for the dimensions of the visualization
         // Constants for graphics drawing
@@ -55,6 +66,9 @@ public class GraphicsController extends Controller {
         // The size of the trains
         final double trainGraphicsDiameter = LINE_WIDTH * 1.1;
 
+        // The size of the signals
+        final double signalGraphicsDiameter = LINE_WIDTH;
+
         // The height of the station
         final double STATION_HEIGHT = LINE_WIDTH * 4.0;
 
@@ -62,13 +76,15 @@ public class GraphicsController extends Controller {
         Color color = toColor(trainSystem.getTrainSystemInformation().getColor());
         Font font = new Font(FONT_NAME, FONT_SIZE);
 
-        graphicsContext.setFill(color);
-        graphicsContext.setStroke(color);
+        Color trainColor = Color.SILVER;
 
-        graphicsContext.setFont(font);
+        backgroundGraphicsContext.setFill(color);
+        backgroundGraphicsContext.setStroke(color);
+
+        backgroundGraphicsContext.setFont(font);
 
         // Prepare other graphics settings
-        graphicsContext.setLineWidth(LINE_WIDTH);
+        backgroundGraphicsContext.setLineWidth(LINE_WIDTH);
 
         // Take note of the direction of drawing
         Track.Direction drawingDirection = Track.Direction.NORTHBOUND;
@@ -76,7 +92,6 @@ public class GraphicsController extends Controller {
         // Look for the first station
         Station station = trainSystem.getStations().get(0);
 
-        // Draw the first station
         double x = initialX;
         double y = initialY;
 
@@ -86,12 +101,14 @@ public class GraphicsController extends Controller {
         double yDirection = yNorthbound;
         double directionMultiplier = 1.0;
 
-        // Draw the incoming segment to the first station
-        // TODO: Don't always assume 0 indices
-        double edgeLength = station.getPlatforms().get(Track.Direction.SOUTHBOUND).getPlatformHub().getPlatformSegment()
-                .getTo().getOutSegments().get(0).getLength();
+        if (background) {
+            // Draw the incoming segment to the first station
+            // TODO: Don't always assume 0 indices
+            double edgeLength = station.getPlatforms().get(Track.Direction.SOUTHBOUND).getPlatformHub()
+                    .getPlatformSegment().getTo().getOutSegments().get(0).getLength();
 
-        graphicsContext.strokeLine(x, yDirection, x - edgeLength * scaleDownFactor, yDirection);
+            backgroundGraphicsContext.strokeLine(x, yDirection, x - edgeLength * scaleDownFactor, yDirection);
+        }
 
         // Continue drawing until the train system has been drawn completely
         Segment segment = station.getPlatforms().get(drawingDirection).getPlatformHub().getPlatformSegment();
@@ -101,47 +118,60 @@ public class GraphicsController extends Controller {
 
         // Change some variables depending on the direction
         while (true) {
-            // If there is a station to be drawn, draw it
-            // We really need to draw the station only once, so just draw it when traversing northbound
-            if (station != null && drawingDirection == Track.Direction.NORTHBOUND) {
-                // Get the length of the station
-                double stationLength = station.getPlatforms().get(drawingDirection).getPlatformHub().getPlatformSegment(
-                ).getLength();
+            if (background) {
+                // If there is a station to be drawn, draw it
+                // We really need to draw the station only once, so just draw it when traversing northbound
+                if (station != null && drawingDirection == Track.Direction.NORTHBOUND) {
+                    // Get the length of the station
+                    double stationLength = station.getPlatforms().get(drawingDirection).getPlatformHub()
+                            .getPlatformSegment().getLength();
 
-                // Draw the station proper
-                graphicsContext.fillRect(x, y - STATION_HEIGHT * 0.5, stationLength * scaleDownFactor,
-                        STATION_HEIGHT);
+                    // Draw the station proper
+                    backgroundGraphicsContext.fillRect(x, y - STATION_HEIGHT * 0.5, stationLength
+                            * scaleDownFactor, STATION_HEIGHT);
 
-                // Draw the station label
-                graphicsContext.fillText(station.getName(), x, y + STATION_HEIGHT * 1.5, STATION_LABEL_MAX_WIDTH);
-            } else {
-                // If there isn't, just draw this segment
-                graphicsContext.strokeLine(x, yDirection, x + directionMultiplier * segment.getLength()
-                        * scaleDownFactor, yDirection);
-            }
-
-            synchronized (segment.getTrainQueue()) {
-                // Draw the trains on this segment (carriage by carriage), if any
-                trainQueue = segment.getTrainQueue();
-
-                // TODO: Establish train constants (e.g., train color)
-                graphicsContext.setFill(Color.SILVER);
-
-                for (int carriageInSegmentIndex = 0; carriageInSegmentIndex < trainQueue.getTrainQueueSize();
-                     carriageInSegmentIndex++) {
-                    graphicsContext.fillOval(x + directionMultiplier * (trainQueue.getTrainCarriage(
-                            carriageInSegmentIndex).getTrainCarriageLocation().getSegmentClearance()) * scaleDownFactor,
-                            yDirection - (trainGraphicsDiameter) * 0.5, trainGraphicsDiameter, trainGraphicsDiameter);
+                    // Draw the station label
+                    backgroundGraphicsContext.fillText(station.getName(), x, y + STATION_HEIGHT * 1.5,
+                            STATION_LABEL_MAX_WIDTH);
+                } else {
+                    // If there isn't, just draw this segment
+                    backgroundGraphicsContext.strokeLine(x, yDirection, x + directionMultiplier
+                            * segment.getLength() * scaleDownFactor, yDirection);
                 }
-            }
+            } else {
+                synchronized (segment.getTrainQueue()) {
+                    // Draw the trains on this segment (carriage by carriage), if any
+                    trainQueue = segment.getTrainQueue();
 
-            graphicsContext.setFill(color);
+                    // TODO: Establish train constants (e.g., train color)
+                    foregroundGraphicsContext.setFill(trainColor);
+
+                    for (int carriageInSegmentIndex = 0; carriageInSegmentIndex < trainQueue.getTrainQueueSize();
+                         carriageInSegmentIndex++) {
+                        foregroundGraphicsContext.fillRect(x + directionMultiplier * (trainQueue.getTrainCarriage(
+                                carriageInSegmentIndex).getTrainCarriageLocation().getSegmentClearance())
+                                        * scaleDownFactor, yDirection - (trainGraphicsDiameter) * 0.5,
+                                trainQueue.getTrainCarriage(carriageInSegmentIndex).getLength() * scaleDownFactor,
+                                trainGraphicsDiameter);
+                    }
+                }
+
+                foregroundGraphicsContext.setFill(color);
+            }
 
             // Increment or decrement the x value, depending on the drawing direction
             x += directionMultiplier * segment.getLength() * scaleDownFactor;
 
             // Go to the next segment
             Junction junction = segment.getTo();
+
+            // Draw the signal of this segment
+            foregroundGraphicsContext.setFill(junction.getSignal().availablePermits() == 0 ? Color.RED : Color.GREEN);
+
+            foregroundGraphicsContext.fillRect(x, yDirection - (signalGraphicsDiameter) * 0.5,
+                    signalGraphicsDiameter, signalGraphicsDiameter);
+
+            foregroundGraphicsContext.setFill(color);
 
             // Check if the junction is where the lines ends
             // If it is, then change directions
@@ -164,58 +194,6 @@ public class GraphicsController extends Controller {
             // See whether the next segment contains a station
             station = segment.getStation();
         }
-
-//        // Remember all station names which have been drawn and traversed
-//        Set<String> stationNamesDiscovered = new HashSet<>();
-//
-//        // Keep drawing and traversing stations until all stations have been exhausted
-//        while (!addAndCheckStationCompleteDiscovery(stationNamesDiscovered, station.getName())) {
-//            do {
-//                // Draw the segment
-//                graphicsContext.strokeLine(x, y, x + segment.getLength() * SCALE_DOWN_FACTOR, y);
-//
-//                // Draw trains belonging to this segment
-//                Queue<Train> trains = segment.getTrainQueue();
-//
-//                for (Train train : trains) {
-//                    double metersElapsed = train.getMetersElapsed();
-//
-//                    // TODO: Establish train constants
-//                    graphicsContext.setFill(Color.PURPLE);
-//                    graphicsContext.fillOval(x + metersElapsed * SCALE_DOWN_FACTOR, y, 5.0, 5.0);
-//                    graphicsContext.setFill(Color.BLUE);
-//
-//                    System.out.println("\t\t\t" + x);
-//                }
-//
-//                x += segment.getLength() * SCALE_DOWN_FACTOR;
-//
-//                // Go to the next segment
-//                segment = segment.getTo().getOutSegments().get(0);
-//            } while (segment.getStation() == null);
-//
-//            station = segment.getStation();
-//
-//            // If, in this point, the station has been discovered before, end the loop
-//            if (stationNamesDiscovered.contains(station.getName())) {
-//                break;
-//            }
-//
-//            // Draw the station
-//            stationLength = station.getPlatforms().get(Track.Direction.NORTHBOUND).getPlatformHub()
-//                    .getPlatformSegment().getLength();
-//
-//            graphicsContext.fillRect(x, y - STATION_HEIGHT * 0.5, stationLength * SCALE_DOWN_FACTOR,
-//                    STATION_HEIGHT);
-//
-//            // Draw the station labels
-//            graphicsContext.fillText(station.getName(), x, y + STATION_HEIGHT * 2.5, STATION_LABEL_MAX_WIDTH);
-//
-//            x += stationLength * SCALE_DOWN_FACTOR;
-//
-//            // Go to the next segment
-//            segment = segment.getTo().getOutSegments().get(0);
-//        }
     }
 
     // Convert string colors to paint objects usable by the graphics library
