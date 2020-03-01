@@ -24,11 +24,8 @@ public class MainScreenController extends ScreenController {
     // entered a station
     public static final Semaphore ARM_ADD_TRAIN_BUTTON = new Semaphore(0);
 
-    // Used to store the current canvas object
-    private static final List<StackPane> CANVASES = new ArrayList<>();
-
-    // Used to store the current train system object
-    private static final List<TrainSystem> TRAIN_SYSTEMS = new ArrayList<>();
+    // Used to store all the simulation states to be presented on the screen
+    private static final List<SimulationContext> SIMULATION_CONTEXTS = new ArrayList<>();
 
     // Used to store the index of the active element
     private static int activeIndex = 0;
@@ -45,22 +42,9 @@ public class MainScreenController extends ScreenController {
     @FXML
     private Button addTrainButton;
 
-    public static List<StackPane> getCanvases() {
-        return CANVASES;
-    }
-
-    public static List<TrainSystem> getTrainSystems() {
-        return TRAIN_SYSTEMS;
-    }
-
-    // Get the active canvas
-    public static StackPane getActiveCanvas() {
-        return MainScreenController.getCanvases().get(MainScreenController.activeIndex);
-    }
-
-    // Get the active train system
-    public static TrainSystem getActiveTrainSystem() {
-        return MainScreenController.getTrainSystems().get(MainScreenController.activeIndex);
+    // Get the active simulation context
+    public static SimulationContext getActiveSimulationContext() {
+        return MainScreenController.SIMULATION_CONTEXTS.get(MainScreenController.activeIndex);
     }
 
     @FXML
@@ -108,8 +92,11 @@ public class MainScreenController extends ScreenController {
     @FXML
     public void addTrainAction() {
         // Get the list of trains
-        List<Train> inactiveTrains = getActiveTrainSystem().getInactiveTrains();
-        List<Train> activeTrains = getActiveTrainSystem().getActiveTrains();
+        List<Train> inactiveTrains = MainScreenController.getActiveSimulationContext().getTrainSystem()
+                .getInactiveTrains();
+
+        List<Train> activeTrains = MainScreenController.getActiveSimulationContext().getTrainSystem()
+                .getActiveTrains();
 
         // Check if it is possible to spawn a new train by checking whether there are inactive trains left in the active
         // train system
@@ -189,9 +176,8 @@ public class MainScreenController extends ScreenController {
         // Clear the tab pane first
         tabPane.getTabs().clear();
 
-        // Clear the active elements array too
-        MainScreenController.getCanvases().clear();
-        MainScreenController.getTrainSystems().clear();
+        // Clear the active contexts too
+        MainScreenController.SIMULATION_CONTEXTS.clear();
 
         for (TrainSystem trainSystem : trainSystems) {
             // Create the tab, then add it to the tab pane
@@ -212,8 +198,7 @@ public class MainScreenController extends ScreenController {
             tabPane.getTabs().add(tab);
 
             // Update the active elements
-            MainScreenController.getCanvases().add(stackPane);
-            MainScreenController.getTrainSystems().add(trainSystem);
+            MainScreenController.SIMULATION_CONTEXTS.add(new SimulationContext(tab, trainSystem));
 
             updateActiveElements(tabPane.getSelectionModel().getSelectedIndex());
         }
@@ -239,7 +224,7 @@ public class MainScreenController extends ScreenController {
 
         // For each tab (which contains a canvas), draw its train system
         for (int trainsystemindex = 0; trainsystemindex < tabPane.getTabs().size(); trainsystemindex++) {
-            StackPane canvases = getActiveCanvas();
+            StackPane canvases = MainScreenController.getActiveSimulationContext().getCanvases();
 
             // Draw each train system onto its respective tab
             GraphicsController.requestDraw(canvases, trainSystems.get(trainsystemindex), true);

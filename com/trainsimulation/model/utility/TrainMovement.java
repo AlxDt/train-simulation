@@ -127,8 +127,8 @@ public class TrainMovement {
             increasing = false;
         } else if (actionTaken == TrainAction.HEADWAY_STOP) {
             // If the action was to stop because of a train ahead, just draw this train's position and stop
-            GraphicsController.requestDraw(MainScreenController.getActiveCanvas(), MainScreenController
-                    .getActiveTrainSystem(), false);
+            GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+                    MainScreenController.getActiveSimulationContext().getTrainSystem(), false);
 
             // Signal to all trains waiting to process their movement that they may now proceed to do so
             TrainMovement.MOVEMENT_LOCK.release();
@@ -139,8 +139,8 @@ public class TrainMovement {
             // If it was, make the train move forward, as it has already waited
             if (previousAction != TrainAction.END_STOP) {
                 // Request a draw
-                GraphicsController.requestDraw(MainScreenController.getActiveCanvas(), MainScreenController
-                        .getActiveTrainSystem(), false);
+                GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+                        MainScreenController.getActiveSimulationContext().getTrainSystem(), false);
 
                 // Signal to all trains waiting to process their movement that they may now proceed to do so
                 TrainMovement.MOVEMENT_LOCK.release();
@@ -152,8 +152,8 @@ public class TrainMovement {
             // If it was, make the train move forward, as it has already waited
             if (previousAction != TrainAction.STATION_STOP) {
                 // Request a draw
-                GraphicsController.requestDraw(MainScreenController.getActiveCanvas(), MainScreenController
-                        .getActiveTrainSystem(), false);
+                GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+                        MainScreenController.getActiveSimulationContext().getTrainSystem(), false);
 
                 // Signal to all trains waiting to process their movement that they may now proceed to do so
                 TrainMovement.MOVEMENT_LOCK.release();
@@ -162,8 +162,8 @@ public class TrainMovement {
             }
         } else if (actionTaken == TrainAction.SIGNAL_STOP) {
             // If the action was to stop because of a train ahead, just draw this train's position and stop
-            GraphicsController.requestDraw(MainScreenController.getActiveCanvas(), MainScreenController
-                    .getActiveTrainSystem(), false);
+            GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+                    MainScreenController.getActiveSimulationContext().getTrainSystem(), false);
 
             // Signal to all trains waiting to process their movement that they may now proceed to do so
             TrainMovement.MOVEMENT_LOCK.release();
@@ -250,8 +250,8 @@ public class TrainMovement {
         }
 
         // Request a draw
-        GraphicsController.requestDraw(MainScreenController.getActiveCanvas(), MainScreenController
-                .getActiveTrainSystem(), false);
+        GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+                MainScreenController.getActiveSimulationContext().getTrainSystem(), false);
 
         // Signal to all trains waiting to process their movement that they may now proceed to do so
         TrainMovement.MOVEMENT_LOCK.release();
