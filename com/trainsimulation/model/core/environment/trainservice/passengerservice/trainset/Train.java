@@ -9,6 +9,7 @@ import com.trainsimulation.model.db.DatabaseQueries;
 import com.trainsimulation.model.db.entity.TrainCarriagesEntity;
 import com.trainsimulation.model.db.entity.TrainsEntity;
 import com.trainsimulation.model.simulator.SimulationTime;
+import com.trainsimulation.model.simulator.Simulator;
 import com.trainsimulation.model.utility.TrainMovement;
 
 import java.util.LinkedList;
@@ -32,7 +33,7 @@ public class Train extends TrainSet implements Agent {
 
         // Get the carriages associated with this train
         List<TrainCarriagesEntity> trainCarriagesEntities = DatabaseQueries.getTrainCarriages(
-                Main.SIMULATOR.getDatabaseInterface(), this);
+                Main.simulator.getDatabaseInterface(), this);
 
         // Add the train carriages
         Integer maxVelocity = null;
@@ -89,27 +90,26 @@ public class Train extends TrainSet implements Agent {
             // Keep track of whether the train has entered its first station from the depot
             boolean hasEnteredStationFromDepot = false;
 
-            // Exit the depot
-            while (true) {
+            // Exit the depot, then keep moving until the simulation is done
+            // TODO: Trains should also go home when told to, or when it's past operating hours
+            while (!Simulator.getDone().get()) {
                 // Move until it is commanded otherwise (when it stops for a station or to avoid colliding with another
-                // train, or when it stops because of a signal)
+                // train, or when it stops because of a signal), or until the simulation is done
                 do {
                     // Take note of the action command
                     trainAction = this.trainMovement.move(trainAction);
 
                     // Pause the thread
-                    Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS);
-                } while (trainAction == TrainMovement.TrainAction.PROCEED);
-
-//                System.out.println(trainAction);
+                    Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
+                } while (trainAction == TrainMovement.TrainAction.PROCEED && !Simulator.getDone().get());
 
                 // Do the specified actions (headway and signal stops do not have any explicit actions)
                 switch (trainAction) {
                     case END_STOP:
                         // Wait in the end for the specified amount of time
-                        while (this.trainMovement.waitAtEnd()) {
+                        while (this.trainMovement.waitAtEnd() && !Simulator.getDone().get()) {
                             // Pause the thread
-                            Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS);
+                            Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
                         }
 
                         break;
@@ -123,9 +123,9 @@ public class Train extends TrainSet implements Agent {
                         }
 
                         // Wait in the station for the specified amount of time
-                        while (this.trainMovement.waitAtStation()) {
+                        while (this.trainMovement.waitAtStation() && !Simulator.getDone().get()) {
                             // Pause the thread
-                            Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS);
+                            Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
                         }
 
                         break;

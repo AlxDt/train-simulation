@@ -1,20 +1,26 @@
 package com.trainsimulation.controller.screen;
 
 import com.trainsimulation.controller.Main;
+import com.trainsimulation.controller.context.SimulationContext;
+import com.trainsimulation.controller.context.WindowResult;
 import com.trainsimulation.controller.graphics.GraphicsController;
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
 import com.trainsimulation.model.db.DatabaseQueries;
+import com.trainsimulation.model.simulator.SimulationTime;
+import com.trainsimulation.model.utility.TrainMovement;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
-import javafx.scene.control.Button;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
+import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.text.Text;
 
 import java.io.IOException;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
@@ -42,25 +48,102 @@ public class MainScreenController extends ScreenController {
     @FXML
     private Button addTrainButton;
 
+    @FXML
+    private Slider simulationSpeedSlider;
+
+    @FXML
+    private Button removeTrainButton;
+
+    @FXML
+    private Button markTrainButton;
+
+    @FXML
+    private Slider headwaySlider;
+
+    @FXML
+    private CheckBox signalCheckBox;
+
+    @FXML
+    private Button previousStationButton;
+
+    @FXML
+    private Text currentStationText;
+
+    @FXML
+    private Button nextStationButton;
+
+    @FXML
+    private Label simulationSpeedLabel;
+
+    @FXML
+    private Text trainsDeployedText;
+
+    @FXML
+    private Label headwayLabel;
+
+    @FXML
+    private Text timeText;
+
     // Get the active simulation context
     public static SimulationContext getActiveSimulationContext() {
         return MainScreenController.SIMULATION_CONTEXTS.get(MainScreenController.activeIndex);
     }
 
     @FXML
+    public void initialize() {
+        // Set label references
+        simulationSpeedLabel.setLabelFor(simulationSpeedSlider);
+        headwayLabel.setLabelFor(headwaySlider);
+
+        // Set slider listeners
+        simulationSpeedSlider.valueProperty().addListener(((observable, oldValue, newValue) -> {
+            SimulationTime.SLEEP_TIME_MILLISECONDS.set((int) (1.0 / newValue.intValue() * 1000));
+        }));
+
+        headwaySlider.valueProperty().addListener(((observable, oldValue, newValue) -> {
+            TrainMovement.HEADWAY_DISTANCE.set(newValue.intValue());
+        }));
+
+        signalCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
+            GraphicsController.SHOW_SIGNALS.set(newValue);
+        });
+    }
+
+    // Requests an update to the simulation time on the screen
+    public void requestUpdateSimulationTime(SimulationTime simulationTime) {
+        Platform.runLater(() -> {
+            updateSimulationTime(simulationTime);
+        });
+    }
+
+    // Updates the simulation time on the screen
+    private void updateSimulationTime(SimulationTime simulationTime) {
+        LocalTime currentTime = simulationTime.getTime();
+        long elapsedTime = simulationTime.getStartTime().until(currentTime, ChronoUnit.SECONDS);
+
+        String timeString = String.format("%02d", currentTime.getHour()) + ":"
+                + String.format("%02d", currentTime.getMinute()) + ":"
+                + String.format("%02d", currentTime.getSecond()) + " "
+                + "(" + elapsedTime + " s)";
+
+        timeText.setText(timeString);
+    }
+
+    @FXML
     public void setupAction() throws IOException {
         SetupScreenController setupController = new SetupScreenController();
-
-        // Set the buttons up, if the dialog was closed due to the set up button
-        if (setupController.showWindow(
+        WindowResult windowResult = setupController.showWindow(
                 "/com/trainsimulation/view/SetupInterface.fxml",
                 "Set the simulation up",
-                true)) {
+                true);
+
+        // Set the buttons up, if the dialog was closed due to the set up button
+        if (windowResult.isWindowClosedWithAction()) {
             // Reset the close button check
             ScreenController.setClosedWithAction(false);
 
             // Get the train systems
-            List<TrainSystem> trainSystems = Main.SIMULATOR.getTrainSystems();
+            List<TrainSystem> trainSystems = Main.simulator.getTrainSystems();
 
             // Load the trains belonging to each train system
             loadTrains(trainSystems);
@@ -80,13 +163,13 @@ public class MainScreenController extends ScreenController {
     public void startAction() {
         positionButtonsStart();
 
-        // TODO: Start the simulation
-        // TODO: How would we know if the simulation has ended
+        // Start the simulation time
+        Main.simulator.start();
     }
 
     @FXML
     public void playPauseAction() {
-
+        positionButtonsPlayPause();
     }
 
     @FXML
@@ -130,16 +213,32 @@ public class MainScreenController extends ScreenController {
 
     private void positionButtonsSetup() {
         // Enable and reset the necessary buttons
+        simulationSpeedLabel.setDisable(true);
+        simulationSpeedSlider.setDisable(true);
+
+        headwayLabel.setDisable(true);
+        headwaySlider.setDisable(true);
+
+        signalCheckBox.setDisable(true);
+
         startButton.setDisable(false);
 
         playPauseButton.setDisable(true);
-        playPauseButton.setText("Play");
+        playPauseButton.setText("Pause");
 
         addTrainButton.setDisable(true);
     }
 
     private void positionButtonsStart() {
         // Enable and disable the necessary buttons
+        simulationSpeedLabel.setDisable(false);
+        simulationSpeedSlider.setDisable(false);
+
+        headwayLabel.setDisable(false);
+        headwaySlider.setDisable(false);
+
+        signalCheckBox.setDisable(false);
+
         playPauseButton.setDisable(false);
         startButton.setDisable(true);
 
@@ -149,20 +248,59 @@ public class MainScreenController extends ScreenController {
     private void positionButtonsPlayPause() {
         // Enable the necessary buttons
         if (playPauseButton.getText().equals("Play")) {
+            simulationSpeedLabel.setDisable(false);
+            simulationSpeedSlider.setDisable(false);
+
+            headwayLabel.setDisable(false);
+            headwaySlider.setDisable(false);
+
+            signalCheckBox.setDisable(false);
+
             playPauseButton.setText("Pause");
+            startButton.setDisable(true);
 
             addTrainButton.setDisable(false);
         } else {
+            simulationSpeedLabel.setDisable(true);
+            simulationSpeedSlider.setDisable(true);
+
+            headwayLabel.setDisable(true);
+            headwaySlider.setDisable(true);
+
+            signalCheckBox.setDisable(true);
+
             playPauseButton.setText("Play");
+            startButton.setDisable(true);
 
             addTrainButton.setDisable(true);
         }
     }
 
+    // Disables all necessary buttons
+    public void requestDisableButtons() {
+        Platform.runLater(() -> {
+            // Enable and reset the necessary buttons
+            simulationSpeedLabel.setDisable(true);
+            simulationSpeedSlider.setDisable(true);
+
+            headwayLabel.setDisable(true);
+            headwaySlider.setDisable(true);
+
+            signalCheckBox.setDisable(true);
+
+            startButton.setDisable(true);
+
+            playPauseButton.setDisable(true);
+            playPauseButton.setText("Done");
+
+            addTrainButton.setDisable(true);
+        });
+    }
+
     // Load the trains to the inactive train memories of each train system
     private void loadTrains(List<TrainSystem> trainSystems) {
         for (TrainSystem trainSystem : trainSystems) {
-            trainSystem.getInactiveTrains().addAll(DatabaseQueries.getTrains(Main.SIMULATOR.getDatabaseInterface(),
+            trainSystem.getInactiveTrains().addAll(DatabaseQueries.getTrains(Main.simulator.getDatabaseInterface(),
                     trainSystem)
             );
         }

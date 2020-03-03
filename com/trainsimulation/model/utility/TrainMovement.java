@@ -10,9 +10,14 @@ import com.trainsimulation.model.core.environment.trainservice.passengerservice.
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 
 // Contains information regarding the train's movement
 public class TrainMovement {
+
+    private static final int DEFAULT_HEADWAY_DISTANCE = 300;
+    public static final AtomicInteger HEADWAY_DISTANCE = new AtomicInteger(DEFAULT_HEADWAY_DISTANCE);
+
     // Manages the synchronization between different train movements
     private static final Semaphore MOVEMENT_LOCK = new Semaphore(1, true);
 
@@ -107,15 +112,12 @@ public class TrainMovement {
     // Make this train move forward while looking forward to see if there is nothing in its way
     // In the train's movement, take the previous action into account
     public TrainAction move(TrainAction previousAction) throws InterruptedException {
-        // TODO: Fix signal stoppages
         // Only one train may move at a time to avoid race conditions
         TrainMovement.MOVEMENT_LOCK.acquire();
 
         // Before doing anything, check whether moving is even possible in the first place
         // Lookahead distance (in m)
-        // TODO: Make lookahead distance adjustable in terms of train lengths
-        final int lookaheadDistance = 300;
-        TrainAction actionTaken = decideMovementAction(lookaheadDistance);
+        TrainAction actionTaken = decideMovementAction(HEADWAY_DISTANCE.get());
 
         // Denotes whether the train is generally accelerating or decelerating
         boolean increasing = true;

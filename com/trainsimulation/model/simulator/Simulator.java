@@ -1,14 +1,19 @@
 package com.trainsimulation.model.simulator;
 
+import com.trainsimulation.controller.Main;
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.db.DatabaseInterface;
 import com.trainsimulation.model.simulator.setup.EnvironmentSetup;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 // The simulator has total control over the aspects of the train simulation
 public class Simulator {
+    // Denotes whether the simulation is done or not
+    private static final AtomicBoolean done = new AtomicBoolean(false);
+
     // Contains the database interfacing methods of the simulator
     private final DatabaseInterface databaseInterface;
 
@@ -21,18 +26,13 @@ public class Simulator {
     // Stores the time when the simulation will end
     private SimulationTime endTime;
 
-    public Simulator(SimulationTime time) throws Throwable {
+    public Simulator() throws Throwable {
         this.databaseInterface = new DatabaseInterface();
-
-        this.time = time;
-
         this.trainSystems = new ArrayList<>();
     }
 
-    public Simulator() throws Throwable {
-        this.databaseInterface = new DatabaseInterface();
-
-        this.trainSystems = new ArrayList<>();
+    public static AtomicBoolean getDone() {
+        return Simulator.done;
     }
 
     public DatabaseInterface getDatabaseInterface() {
@@ -75,20 +75,32 @@ public class Simulator {
     }
 
     // Start the simulation and keep it running until the given ending time
-    public void start() throws InterruptedException {
-        // From the starting time until the ending time, increment the time of the simulation
-        while (this.time.isTimeBeforeOrDuring(this.endTime)) {
-            // TODO: Redraw the graphics corresponding to the current simulation state
+    public void start() {
+        // Run this on a thread so it won't choke the JavaFX UI thread
+        new Thread(() -> {
+            // From the starting time until the ending time, increment the time of the simulation
+            while (this.time.isTimeBeforeOrDuring(this.endTime)) {
+                // Redraw the updated time
+                Main.mainScreenController.requestUpdateSimulationTime(this.time);
 
-            // Pause this simulation thread for a brief amount of time so it could be followed at a pace conducive to
-            // visualization
-            Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS);
+                // Pause this simulation thread for a brief amount of time so it could be followed at a pace conducive
+                // to visualization
+                try {
+                    Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
 
-            // Increment (tick) the clock
-            this.time.tick();
-        }
+                // Increment (tick) the clock
+                this.time.tick();
+            }
 
-        // TODO: After this point, tell all trains to head back to the depot
+            // Once the simulation time stops, stop all the threads
+            Simulator.done.set(true);
+
+            // Then tell the UI thread to disable all buttons
+            Main.mainScreenController.requestDisableButtons();
+        }).start();
     }
 
     // TODO: Implement simulation playing/pausing logic

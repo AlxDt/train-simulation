@@ -1,4 +1,4 @@
-package com.trainsimulation.controller.screen;
+package com.trainsimulation.controller.context;
 
 import com.trainsimulation.model.core.environment.TrainSystem;
 import javafx.scene.control.Tab;

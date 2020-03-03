@@ -34,12 +34,12 @@ public class SetupScreenController extends ScreenController {
         int endHour = (int) endHourSlider.getValue();
         int endMinute = (int) endMinuteSlider.getValue();
 
-        final int SECOND_VALUE = 0;
+        final int defaultSecondValue = 0;
 
-        SimulationTime time = new SimulationTime(startHour, startMinute, SECOND_VALUE);
-        SimulationTime endTime = new SimulationTime(endHour, endMinute, SECOND_VALUE);
+        SimulationTime time = new SimulationTime(startHour, startMinute, defaultSecondValue);
+        SimulationTime endTime = new SimulationTime(endHour, endMinute, defaultSecondValue);
 
-        Main.SIMULATOR.setup(time, endTime);
+        Main.simulator.setup(time, endTime);
 
         // Signal to the parent controller that the button will be closed from the set up button
         ScreenController.setClosedWithAction(true);

@@ -1,6 +1,7 @@
 package com.trainsimulation.controller.screen;
 
 import com.trainsimulation.controller.Controller;
+import com.trainsimulation.controller.context.WindowResult;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -24,8 +25,11 @@ public abstract class ScreenController extends Controller {
         ScreenController.closedWithAction = closedWithAction;
     }
 
-    public boolean showWindow(String interfaceLocation, String title, boolean isDialog) throws IOException {
-        Parent root = FXMLLoader.load(getClass().getResource(interfaceLocation));
+    public WindowResult showWindow(String interfaceLocation, String title, boolean isDialog) throws IOException {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource(interfaceLocation));
+
+        Parent root = loader.load();
+
         Scene scene = new Scene(root);
         Stage stage = new Stage();
 
@@ -40,6 +44,6 @@ public abstract class ScreenController extends Controller {
             stage.show();
         }
 
-        return ScreenController.isClosedWithAction();
+        return new WindowResult(ScreenController.isClosedWithAction(), loader.getController());
     }
 }

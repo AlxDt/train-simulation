@@ -1,5 +1,6 @@
 package com.trainsimulation.controller;
 
+import com.trainsimulation.controller.context.WindowResult;
 import com.trainsimulation.controller.screen.MainScreenController;
 import com.trainsimulation.model.simulator.Simulator;
 import javafx.application.Application;
@@ -7,7 +8,10 @@ import javafx.stage.Stage;
 
 public class Main extends Application {
     // Stores the simulator object in charge of all the simulation processes
-    public static Simulator SIMULATOR = null;
+    public static Simulator simulator = null;
+
+    // Keep a reference to the main controller
+    public static MainScreenController mainScreenController;
 
     public static void main(String[] args) {
         launch(args);
@@ -25,9 +29,12 @@ public class Main extends Application {
             // there will be a few seconds of unresponsiveness from the interface until the database connection is
             // fulfilled
             MainScreenController mainController = new MainScreenController();
-            mainController.showWindow("/com/trainsimulation/view/MainInterface.fxml",
+            WindowResult windowResult
+                    = mainController.showWindow("/com/trainsimulation/view/MainInterface.fxml",
                     "Train simulation",
                     false);
+
+            Main.mainScreenController = (MainScreenController) windowResult.getScreenController();
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
@@ -35,6 +42,6 @@ public class Main extends Application {
 
     // Initializes the simulator
     private void initializeSimulator() throws Throwable {
-        SIMULATOR = new Simulator();
+        simulator = new Simulator();
     }
 }

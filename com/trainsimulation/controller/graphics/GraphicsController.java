@@ -14,9 +14,12 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 
-import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class GraphicsController extends Controller {
+    // Denotes whether signals should be shown
+    public static final AtomicBoolean SHOW_SIGNALS = new AtomicBoolean(false);
+
     // Send a request to draw on the canvas
     public static void requestDraw(StackPane canvases, TrainSystem trainSystem, boolean background) {
         Platform.runLater(() -> {
@@ -49,7 +52,7 @@ public class GraphicsController extends Controller {
         final double initialY = CANVAS_HEIGHT * 0.5;
 
         // A factor used to scale down the real-world train line dimensions
-        final double scaleDownFactor = 0.075;
+        final double scaleDownFactor = 0.07;
 
         // The font to be used
         final String FONT_NAME = "Segoe UI";
@@ -166,12 +169,14 @@ public class GraphicsController extends Controller {
             Junction junction = segment.getTo();
 
             // Draw the signal of this segment
-            foregroundGraphicsContext.setFill(junction.getSignal().availablePermits() == 0 ? Color.RED : Color.GREEN);
+            if (GraphicsController.SHOW_SIGNALS.get()) {
+                foregroundGraphicsContext.setFill(junction.getSignal().availablePermits() == 0 ? Color.RED : Color.GREEN);
 
-            foregroundGraphicsContext.fillRect(x, yDirection - (signalGraphicsDiameter) * 0.5,
-                    signalGraphicsDiameter, signalGraphicsDiameter);
+                foregroundGraphicsContext.fillRect(x, yDirection - (signalGraphicsDiameter) * 0.5,
+                        signalGraphicsDiameter, signalGraphicsDiameter);
 
-            foregroundGraphicsContext.setFill(color);
+                foregroundGraphicsContext.setFill(color);
+            }
 
             // Check if the junction is where the lines ends
             // If it is, then change directions
@@ -208,16 +213,5 @@ public class GraphicsController extends Controller {
             default:
                 return null;
         }
-    }
-
-    // Check if the size of the list of stations discovered has changed or not, after adding a station
-    // If it did not change, it means all stations have been discovered
-    private static boolean addAndCheckStationCompleteDiscovery(Set<String> stationsDiscovered, String stationName) {
-        int sizeBeforeAdding = stationsDiscovered.size();
-        stationsDiscovered.add(stationName);
-        int sizeAfterAdding = stationsDiscovered.size();
-
-        // Return true if all stations have indeed been discovered
-        return sizeBeforeAdding == sizeAfterAdding;
     }
 }
