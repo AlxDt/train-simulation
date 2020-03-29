@@ -5,6 +5,8 @@ import com.trainsimulation.controller.screen.MainScreenController;
 import com.trainsimulation.model.core.agent.Agent;
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.trainservice.maintenance.Depot;
+import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.TrainProperty;
+import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.db.DatabaseQueries;
 import com.trainsimulation.model.db.entity.TrainCarriagesEntity;
 import com.trainsimulation.model.db.entity.TrainsEntity;
@@ -26,6 +28,9 @@ public class Train extends TrainSet implements Agent {
     // Contains the variables relevant to the train's movement
     private final TrainMovement trainMovement;
 
+    // Contains a summarized representation of this train (for table tracking purposes)
+    private final TrainProperty trainProperty;
+
     public Train(TrainSystem trainSystem, TrainsEntity trainsEntity) {
         super(trainSystem, trainsEntity.getId());
 
@@ -37,7 +42,7 @@ public class Train extends TrainSet implements Agent {
 
         // Add the train carriages
         Integer maxVelocity = null;
-        Integer waitingTime = null;
+        Double deceleration = null;
 
         // There should always be carriages associated with this train
         assert trainCarriagesEntities.size() != 0 : "No train carriages associated with this train";
@@ -49,16 +54,17 @@ public class Train extends TrainSet implements Agent {
                 TrainCarriage trainCarriage = new TrainCarriage(trainSystem, trainCarriagesEntity, this);
 
                 // Add the maximum velocity and waiting times
-                if (maxVelocity == null && waitingTime == null) {
+                if (maxVelocity == null && deceleration == null) {
                     maxVelocity = (int) trainCarriagesEntity.getCarriageClassesByCarriageClass().getMaxVelocity();
-                    waitingTime = (int) trainCarriagesEntity.getTrainsByTrain().getWaitingTime();
+                    deceleration = (double) trainCarriagesEntity.getCarriageClassesByCarriageClass().getDeceleration();
                 }
 
                 this.trainCarriages.add(trainCarriage);
             }
         }
 
-        this.trainMovement = new TrainMovement(maxVelocity, waitingTime, this);
+        this.trainMovement = new TrainMovement(maxVelocity, deceleration, this);
+        this.trainProperty = new TrainProperty(this);
     }
 
     public LinkedList<TrainCarriage> getTrainCarriages() {
@@ -77,6 +83,10 @@ public class Train extends TrainSet implements Agent {
         return trainMovement;
     }
 
+    public TrainProperty getTrainProperty() {
+        return trainProperty;
+    }
+
     @Override
     public void run() {
         try {
@@ -84,8 +94,8 @@ public class Train extends TrainSet implements Agent {
             Depot depot = this.getTrainSystem().getDepot();
             this.trainMovement.setTrainAtSegment(depot.getPlatformHub().getPlatformSegment(), CARRIAGE_GAP);
 
-            // The first action was to stop - as it was in a depot
-            TrainMovement.TrainAction trainAction = TrainMovement.TrainAction.STATION_STOP;
+            // Take note of the actions made
+            TrainMovement.TrainAction trainAction;
 
             // Keep track of whether the train has entered its first station from the depot
             boolean hasEnteredStationFromDepot = false;
@@ -97,7 +107,11 @@ public class Train extends TrainSet implements Agent {
                 // train, or when it stops because of a signal), or until the simulation is done
                 do {
                     // Take note of the action command
-                    trainAction = this.trainMovement.move(trainAction);
+                    trainAction = this.trainMovement.move();
+
+                    // Update the summary
+                    this.trainProperty.updateTrainProperty(this.identifier, this.trainMovement, this.trainCarriages
+                            .getFirst());
 
                     // Pause the thread
                     Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
@@ -130,6 +144,10 @@ public class Train extends TrainSet implements Agent {
 
                         break;
                 }
+
+                // Update the summary
+                this.trainProperty.updateTrainProperty(this.identifier, this.trainMovement, this.trainCarriages
+                        .getFirst());
             }
         } catch (InterruptedException ex) {
             ex.printStackTrace();

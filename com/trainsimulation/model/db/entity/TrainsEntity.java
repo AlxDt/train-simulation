@@ -8,7 +8,6 @@ import java.util.Objects;
 @Table(name = "trains", schema = "main", catalog = "")
 public class TrainsEntity {
     private short id;
-    private short waitingTime;
     private Collection<TrainCarriagesEntity> trainCarriagesById;
     private TrainSystemsEntity trainSystemsByTrainSystem;
 
@@ -22,28 +21,17 @@ public class TrainsEntity {
         this.id = id;
     }
 
-    @Basic
-    @Column(name = "waiting_time", nullable = false)
-    public short getWaitingTime() {
-        return waitingTime;
-    }
-
-    public void setWaitingTime(short waitingTime) {
-        this.waitingTime = waitingTime;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         TrainsEntity that = (TrainsEntity) o;
-        return id == that.id &&
-                waitingTime == that.waitingTime;
+        return id == that.id;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, waitingTime);
+        return Objects.hash(id);
     }
 
     @OneToMany(mappedBy = "trainsByTrain")

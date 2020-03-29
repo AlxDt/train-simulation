@@ -1,9 +1,11 @@
 package com.trainsimulation.controller;
 
-import com.trainsimulation.controller.context.WindowResult;
 import com.trainsimulation.controller.screen.MainScreenController;
+import com.trainsimulation.controller.screen.ScreenController;
 import com.trainsimulation.model.simulator.Simulator;
 import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.stage.Stage;
 
 public class Main extends Application {
@@ -28,13 +30,18 @@ public class Main extends Application {
             // time so it's better to bring the interface up after the database connection has been fulfilled (otherwise
             // there will be a few seconds of unresponsiveness from the interface until the database connection is
             // fulfilled
-            MainScreenController mainController = new MainScreenController();
-            WindowResult windowResult
-                    = mainController.showWindow("/com/trainsimulation/view/MainInterface.fxml",
+            FXMLLoader loader = ScreenController.getLoader(
+                    getClass(),
+                    "/com/trainsimulation/view/MainInterface.fxml");
+            Parent root = loader.load();
+
+            MainScreenController mainController = loader.getController();
+            mainController.showWindow(
+                    root,
                     "Train simulation",
                     false);
 
-            Main.mainScreenController = (MainScreenController) windowResult.getScreenController();
+            Main.mainScreenController = mainController;
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }

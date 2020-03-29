@@ -94,4 +94,20 @@ public class Segment extends Track {
     public void setCurved(boolean curved) {
         this.curved = curved;
     }
+
+    // Denotes the string identifier of this segment
+    public static class SegmentIdentifier {
+        // String constants for track indicators
+        public static final String MAINLINE = "mainline";
+        public static final String STATION = "station";
+        public static final String LOOP = "end";
+        public static final String DEPOT = "depot";
+
+        public static final String DELIMITER = ":";
+
+        public static final String DEPOT_IN = "in";
+        public static final String DEPOT_OUT = "out";
+        public static final String LOOP_IN = "into";
+        public static final String LOOP_OUT = "out from";
+    }
 }

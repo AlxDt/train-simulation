@@ -6,6 +6,8 @@ import com.trainsimulation.model.core.environment.infrastructure.track.Junction;
 import com.trainsimulation.model.core.environment.infrastructure.track.Segment;
 import com.trainsimulation.model.core.environment.infrastructure.track.Track;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
+import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
+import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.TrainCarriage;
 import com.trainsimulation.model.utility.TrainQueue;
 import javafx.application.Platform;
 import javafx.scene.canvas.Canvas;
@@ -19,6 +21,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class GraphicsController extends Controller {
     // Denotes whether signals should be shown
     public static final AtomicBoolean SHOW_SIGNALS = new AtomicBoolean(false);
+
+    // Denotes the train to mark, if any
+    public static Train markedTrain = null;
 
     // Send a request to draw on the canvas
     public static void requestDraw(StackPane canvases, TrainSystem trainSystem, boolean background) {
@@ -75,6 +80,9 @@ public class GraphicsController extends Controller {
         // The height of the station
         final double STATION_HEIGHT = LINE_WIDTH * 4.0;
 
+        // The radius of the marking circle
+        final double MARKING_RADIUS = 50;
+
         // Prepare the colors and fonts
         Color color = toColor(trainSystem.getTrainSystemInformation().getColor());
         Font font = new Font(FONT_NAME, FONT_SIZE);
@@ -85,6 +93,8 @@ public class GraphicsController extends Controller {
         backgroundGraphicsContext.setStroke(color);
 
         backgroundGraphicsContext.setFont(font);
+
+        foregroundGraphicsContext.setStroke(Color.BLACK);
 
         // Prepare other graphics settings
         backgroundGraphicsContext.setLineWidth(LINE_WIDTH);
@@ -151,11 +161,27 @@ public class GraphicsController extends Controller {
 
                     for (int carriageInSegmentIndex = 0; carriageInSegmentIndex < trainQueue.getTrainQueueSize();
                          carriageInSegmentIndex++) {
-                        foregroundGraphicsContext.fillRect(x + directionMultiplier * (trainQueue.getTrainCarriage(
-                                carriageInSegmentIndex).getTrainCarriageLocation().getSegmentClearance())
-                                        * scaleDownFactor, yDirection - (trainGraphicsDiameter) * 0.5,
-                                trainQueue.getTrainCarriage(carriageInSegmentIndex).getLength() * scaleDownFactor,
+                        TrainCarriage trainCarriage = trainQueue.getTrainCarriage(carriageInSegmentIndex);
+
+                        foregroundGraphicsContext.fillRect(x + directionMultiplier * trainCarriage
+                                        .getTrainCarriageLocation().getSegmentClearance() * scaleDownFactor,
+                                yDirection - (trainGraphicsDiameter) * 0.5,
+                                trainCarriage.getLength() * scaleDownFactor,
                                 trainGraphicsDiameter);
+
+                        // If the train composed of this train carriage is supposed to be marked, draw a large circle to
+                        // mark it
+                        if (trainCarriage.getParentTrain() == GraphicsController.markedTrain) {
+                            // Make sure only the head carriage is marked (no need for multiple marks on one train)
+                            if (trainCarriage.getParentTrain().getHead() == trainCarriage) {
+                                foregroundGraphicsContext.strokeOval((x + directionMultiplier * trainCarriage
+                                                .getTrainCarriageLocation().getSegmentClearance() * scaleDownFactor)
+                                                - MARKING_RADIUS * 0.5,
+                                        (yDirection - (trainGraphicsDiameter) * 0.5) - MARKING_RADIUS * 0.5,
+                                        MARKING_RADIUS,
+                                        MARKING_RADIUS);
+                            }
+                        }
                     }
                 }
 

@@ -2,15 +2,19 @@ package com.trainsimulation.controller.screen;
 
 import com.trainsimulation.controller.Main;
 import com.trainsimulation.controller.context.SimulationContext;
-import com.trainsimulation.controller.context.WindowResult;
 import com.trainsimulation.controller.graphics.GraphicsController;
 import com.trainsimulation.model.core.environment.TrainSystem;
+import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.PassengerServiceProperty;
+import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.TrainProperty;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
 import com.trainsimulation.model.db.DatabaseQueries;
 import com.trainsimulation.model.simulator.SimulationTime;
 import com.trainsimulation.model.utility.TrainMovement;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.*;
@@ -58,6 +62,9 @@ public class MainScreenController extends ScreenController {
     private Button markTrainButton;
 
     @FXML
+    private Button clearMarkButton;
+
+    @FXML
     private Slider headwaySlider;
 
     @FXML
@@ -76,6 +83,9 @@ public class MainScreenController extends ScreenController {
     private Label simulationSpeedLabel;
 
     @FXML
+    private Text trainSystemText;
+
+    @FXML
     private Text trainsDeployedText;
 
     @FXML
@@ -83,6 +93,21 @@ public class MainScreenController extends ScreenController {
 
     @FXML
     private Text timeText;
+
+    @FXML
+    private TableView<TrainProperty> activeTrainsTable;
+
+    @FXML
+    private TableColumn<TrainProperty, String> trainNumberColumn;
+
+    @FXML
+    private TableColumn<TrainProperty, String> trainStatusColumn;
+
+    @FXML
+    private TableColumn<TrainProperty, String> trainVelocityColumn;
+
+//    @FXML
+//    private TableColumn<Train.TrainProperty, String> trainPassengersColumn;
 
     // Get the active simulation context
     public static SimulationContext getActiveSimulationContext() {
@@ -107,6 +132,18 @@ public class MainScreenController extends ScreenController {
         signalCheckBox.selectedProperty().addListener((observable, oldValue, newValue) -> {
             GraphicsController.SHOW_SIGNALS.set(newValue);
         });
+
+        // Prepare the table columns
+        trainNumberColumn.setCellValueFactory(trainNumber -> trainNumber.getValue().trainNumberProperty());
+        trainStatusColumn.setCellValueFactory(trainStatus -> trainStatus.getValue().statusProperty());
+        trainVelocityColumn.setCellValueFactory(trainVelocity -> trainVelocity.getValue().velocityProperty());
+
+        // Prepare the table row bindings
+        markTrainButton.disableProperty().bind(Bindings.isEmpty(activeTrainsTable.getSelectionModel().getSelectedItems()
+        ));
+
+        clearMarkButton.disableProperty().bind(Bindings.isEmpty(activeTrainsTable.getSelectionModel()
+                .getSelectedItems()));
     }
 
     // Requests an update to the simulation time on the screen
@@ -131,17 +168,19 @@ public class MainScreenController extends ScreenController {
 
     @FXML
     public void setupAction() throws IOException {
-        SetupScreenController setupController = new SetupScreenController();
-        WindowResult windowResult = setupController.showWindow(
-                "/com/trainsimulation/view/SetupInterface.fxml",
+        FXMLLoader loader = ScreenController.getLoader(getClass(),
+                "/com/trainsimulation/view/SetupInterface.fxml");
+        Parent root = loader.load();
+
+        SetupScreenController setupController = loader.getController();
+
+        setupController.showWindow(
+                root,
                 "Set the simulation up",
                 true);
 
         // Set the buttons up, if the dialog was closed due to the set up button
-        if (windowResult.isWindowClosedWithAction()) {
-            // Reset the close button check
-            ScreenController.setClosedWithAction(false);
-
+        if (setupController.isClosedWithAction()) {
             // Get the train systems
             List<TrainSystem> trainSystems = Main.simulator.getTrainSystems();
 
@@ -155,13 +194,16 @@ public class MainScreenController extends ScreenController {
             drawPerTab(tabPane, trainSystems);
 
             // Position the buttons
-            positionButtonsSetup();
+            requestPositionButtonsSetup();
+
+            // Update the UI initially
+            requestUpdateUI(getActiveSimulationContext().getTrainSystem());
         }
     }
 
     @FXML
     public void startAction() {
-        positionButtonsStart();
+        requestPositionButtonsStart();
 
         // Start the simulation time
         Main.simulator.start();
@@ -169,98 +211,100 @@ public class MainScreenController extends ScreenController {
 
     @FXML
     public void playPauseAction() {
-        positionButtonsPlayPause();
+        requestPositionButtonsPlayPause();
     }
 
     @FXML
-    public void addTrainAction() {
-        // Get the list of trains
-        List<Train> inactiveTrains = MainScreenController.getActiveSimulationContext().getTrainSystem()
-                .getInactiveTrains();
+    public void addTrainAction() throws IOException {
+        FXMLLoader loader = ScreenController.getLoader(
+                getClass(),
+                "/com/trainsimulation/view/InsertTrainInterface.fxml");
+        Parent root = loader.load();
 
-        List<Train> activeTrains = MainScreenController.getActiveSimulationContext().getTrainSystem()
-                .getActiveTrains();
+        InsertTrainScreenController insertTrainScreenController = loader.getController();
 
-        // Check if it is possible to spawn a new train by checking whether there are inactive trains left in the active
-        // train system
-        if (inactiveTrains.size() > 0) {
-            // Temporarily disable this button to prevent race conditions concerning the situations when a train has
-            // been added to a segment in the the system without the previous one not having left it yet
-            addTrainButton.setDisable(true);
+        // Set the window input first
+        insertTrainScreenController.getWindowInput().put(InsertTrainScreenController.INPUT_KEYS[0],
+                getActiveSimulationContext().getTrainSystem().getInactiveTrains());
 
-            // Get a train from that list of inactive trains and activate it
-            Train train = inactiveTrains.remove(0);
-            train.activate(activeTrains);
+        insertTrainScreenController.getWindowInput().put(InsertTrainScreenController.INPUT_KEYS[1],
+                getActiveSimulationContext().getTrainSystem().getStations());
 
-            // Run a quick thread to monitor the rearming of the add train button
-            // This code is in a separate thread to avoid choking the JavaFX UI thread
-            new Thread(() -> {
-                try {
-                    // Wait until the train enters a station from the depot for the first time
-                    MainScreenController.ARM_ADD_TRAIN_BUTTON.acquire();
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace();
-                }
+        // Insert input values
+        insertTrainScreenController.setElements();
 
-                // Eventually enable this button once the train has entered a station from the depot
-                addTrainButton.setDisable(false);
-            }).start();
-        } else {
-            // TODO: Display a dialog saying it is not possible
-            System.out.println("There are no more trains for this train system.");
+        insertTrainScreenController.showWindow(
+                root,
+                "Insert an " + MainScreenController.getActiveSimulationContext().getTrainSystem()
+                        .getTrainSystemInformation().getName() + " train",
+                true);
+
+        // Set the buttons up, if the dialog was closed due to the set up button
+        if (insertTrainScreenController.isClosedWithAction()) {
+            // Retrieve the train to be activated
+            Train selectedTrain
+                    = (Train) insertTrainScreenController.getWindowOutput().get(InsertTrainScreenController.OUTPUT_KEY);
+
+            // Get the list of trains
+            List<Train> inactiveTrains = MainScreenController.getActiveSimulationContext().getTrainSystem()
+                    .getInactiveTrains();
+
+            List<Train> activeTrains = MainScreenController.getActiveSimulationContext().getTrainSystem()
+                    .getActiveTrains();
+
+            // Check if it is possible to spawn a new train by checking whether there are inactive trains left in the
+            // active train system
+            if (inactiveTrains.size() > 0) {
+                // Temporarily disable this button to prevent race conditions concerning the situations when a train has
+                // been added to a segment in the the system without the previous one not having left it yet
+                addTrainButton.setDisable(true);
+
+                // Get a train from that list of inactive trains and activate it
+                assert inactiveTrains.remove(selectedTrain) : "Selected train was unable to be selected";
+                selectedTrain.activate(activeTrains);
+
+                // Reset the choices, as one train has already been chosen
+                insertTrainScreenController.updateTrainChoices();
+
+                // Run a quick thread to monitor the rearming of the add train button
+                // This code is in a separate thread to avoid choking the JavaFX UI thread
+                new Thread(() -> {
+                    try {
+                        // Wait until the train enters a station from the depot for the first time
+                        MainScreenController.ARM_ADD_TRAIN_BUTTON.acquire();
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace();
+                    }
+
+                    // Eventually enable this button once the train has entered a station from the depot if there still
+                    // are inactive trains left
+                    if (inactiveTrains.size() > 0) {
+                        addTrainButton.setDisable(false);
+                    }
+                }).start();
+
+                // Update the UI
+                requestUpdateUI(getActiveSimulationContext().getTrainSystem());
+            }
         }
     }
 
-    private void positionButtonsSetup() {
-        // Enable and reset the necessary buttons
-        simulationSpeedLabel.setDisable(true);
-        simulationSpeedSlider.setDisable(true);
-
-        headwayLabel.setDisable(true);
-        headwaySlider.setDisable(true);
-
-        signalCheckBox.setDisable(true);
-
-        startButton.setDisable(false);
-
-        playPauseButton.setDisable(true);
-        playPauseButton.setText("Pause");
-
-        addTrainButton.setDisable(true);
+    @FXML
+    public void markAction() {
+        // Mark the selected train
+        GraphicsController.markedTrain = (Train) activeTrainsTable.getSelectionModel().getSelectedItem()
+                .getPassengerService();
     }
 
-    private void positionButtonsStart() {
-        // Enable and disable the necessary buttons
-        simulationSpeedLabel.setDisable(false);
-        simulationSpeedSlider.setDisable(false);
-
-        headwayLabel.setDisable(false);
-        headwaySlider.setDisable(false);
-
-        signalCheckBox.setDisable(false);
-
-        playPauseButton.setDisable(false);
-        startButton.setDisable(true);
-
-        addTrainButton.setDisable(false);
+    @FXML
+    public void clearMarkAction() {
+        // Remove all markings
+        GraphicsController.markedTrain = null;
     }
 
-    private void positionButtonsPlayPause() {
-        // Enable the necessary buttons
-        if (playPauseButton.getText().equals("Play")) {
-            simulationSpeedLabel.setDisable(false);
-            simulationSpeedSlider.setDisable(false);
-
-            headwayLabel.setDisable(false);
-            headwaySlider.setDisable(false);
-
-            signalCheckBox.setDisable(false);
-
-            playPauseButton.setText("Pause");
-            startButton.setDisable(true);
-
-            addTrainButton.setDisable(false);
-        } else {
+    private void requestPositionButtonsSetup() {
+        Platform.runLater(() -> {
+            // Enable and reset the necessary buttons
             simulationSpeedLabel.setDisable(true);
             simulationSpeedSlider.setDisable(true);
 
@@ -269,11 +313,72 @@ public class MainScreenController extends ScreenController {
 
             signalCheckBox.setDisable(true);
 
-            playPauseButton.setText("Play");
-            startButton.setDisable(true);
+            startButton.setDisable(false);
+
+            playPauseButton.setDisable(true);
+            playPauseButton.setText("Pause");
 
             addTrainButton.setDisable(true);
-        }
+
+            activeTrainsTable.setDisable(true);
+        });
+    }
+
+    private void requestPositionButtonsStart() {
+        Platform.runLater(() -> {
+            // Enable and disable the necessary buttons
+            simulationSpeedLabel.setDisable(false);
+            simulationSpeedSlider.setDisable(false);
+
+            headwayLabel.setDisable(false);
+            headwaySlider.setDisable(false);
+
+            signalCheckBox.setDisable(false);
+
+            playPauseButton.setDisable(false);
+            startButton.setDisable(true);
+
+            addTrainButton.setDisable(false);
+
+            activeTrainsTable.setDisable(false);
+        });
+    }
+
+    private void requestPositionButtonsPlayPause() {
+        Platform.runLater(() -> {
+            // Enable the necessary buttons
+            if (playPauseButton.getText().equals("Play")) {
+                simulationSpeedLabel.setDisable(false);
+                simulationSpeedSlider.setDisable(false);
+
+                headwayLabel.setDisable(false);
+                headwaySlider.setDisable(false);
+
+                signalCheckBox.setDisable(false);
+
+                playPauseButton.setText("Pause");
+                startButton.setDisable(true);
+
+                addTrainButton.setDisable(false);
+
+                activeTrainsTable.setDisable(false);
+            } else {
+                simulationSpeedLabel.setDisable(true);
+                simulationSpeedSlider.setDisable(true);
+
+                headwayLabel.setDisable(true);
+                headwaySlider.setDisable(true);
+
+                signalCheckBox.setDisable(true);
+
+                playPauseButton.setText("Play");
+                startButton.setDisable(true);
+
+                addTrainButton.setDisable(true);
+
+                activeTrainsTable.setDisable(true);
+            }
+        });
     }
 
     // Disables all necessary buttons
@@ -294,6 +399,53 @@ public class MainScreenController extends ScreenController {
             playPauseButton.setText("Done");
 
             addTrainButton.setDisable(true);
+
+            activeTrainsTable.setDisable(true);
+        });
+    }
+
+    // Called when changing tabs, this requests for an update to the UI details
+    private void requestUpdateUI(final TrainSystem activeTrainSystem) {
+        Platform.runLater(() -> {
+            // Update the train system information on the UI
+            updateTrainSystem(activeTrainSystem);
+            updateActiveTrainCount(activeTrainSystem);
+            updateActiveTrainsTable(activeTrainSystem);
+
+            // Check whether the add train button should be disabled
+            if (activeTrainSystem.getInactiveTrains().size() == 0) {
+                addTrainButton.setDisable(true);
+            }
+        });
+    }
+
+    // Update the train system displayed in the UI
+    private void updateTrainSystem(final TrainSystem activeTrainSystem) {
+        trainSystemText.setText(activeTrainSystem.getTrainSystemInformation().getName());
+    }
+
+    // Update the active train count of the active train system on the UI
+    private void updateActiveTrainCount(final TrainSystem activeTrainSystem) {
+        int activeTrainCount = activeTrainSystem.getActiveTrains().size();
+        int totalTrainCount = activeTrainSystem.getActiveTrains().size()
+                + activeTrainSystem.getInactiveTrains().size();
+
+        trainsDeployedText.setText(activeTrainCount + " / " + totalTrainCount + " trains deployed");
+    }
+
+    // Update the active trains table on the UI
+    public void updateActiveTrainsTable(final TrainSystem activeTrainSystem) {
+        Platform.runLater(() -> {
+            // Prepare the train properties (the table data)
+            List<Train> activeTrainList = activeTrainSystem.getActiveTrains();
+            List<TrainProperty> activeTrainPropertyList = new ArrayList<>();
+
+            for (Train train : activeTrainList) {
+                activeTrainPropertyList.add(train.getTrainProperty());
+            }
+
+            // Prepare the table in the UI (the table itself)
+            activeTrainsTable.setItems(PassengerServiceProperty.toObservablePropertyList(activeTrainPropertyList));
         });
     }
 
@@ -343,11 +495,15 @@ public class MainScreenController extends ScreenController {
 
         // Tell the tab pane that whenever the tab is changed, change the active canvas too, as well as the active train
         // system
+        // Then update the UI accordingly with respect to the current train system
         tabPane.getSelectionModel().selectedItemProperty().addListener(
                 (observable, oldValue, newValue) -> {
                     int index = tabPane.getSelectionModel().getSelectedIndex();
 
                     updateActiveElements(index);
+
+                    // Update the UI accordingly
+                    updateActiveTrainCount(getActiveSimulationContext().getTrainSystem());
                 }
         );
 

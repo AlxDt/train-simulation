@@ -1,6 +1,7 @@
 package com.trainsimulation.model.simulator;
 
 import com.trainsimulation.controller.Main;
+import com.trainsimulation.controller.screen.MainScreenController;
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.db.DatabaseInterface;
 import com.trainsimulation.model.simulator.setup.EnvironmentSetup;

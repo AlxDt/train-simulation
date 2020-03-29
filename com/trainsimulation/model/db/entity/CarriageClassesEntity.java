@@ -12,6 +12,7 @@ public class CarriageClassesEntity {
     private short capacity;
     private double length;
     private short maxVelocity;
+    private short deceleration;
     private Collection<TrainCarriagesEntity> trainCarriagesById;
 
     @Id
@@ -64,6 +65,16 @@ public class CarriageClassesEntity {
         this.maxVelocity = maxVelocity;
     }
 
+    @Basic
+    @Column(name = "deceleration", nullable = false)
+    public short getDeceleration() {
+        return deceleration;
+    }
+
+    public void setDeceleration(short deceleration) {
+        this.deceleration = deceleration;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -73,12 +84,13 @@ public class CarriageClassesEntity {
                 capacity == that.capacity &&
                 Double.compare(that.length, length) == 0 &&
                 maxVelocity == that.maxVelocity &&
+                deceleration == that.deceleration &&
                 Objects.equals(className, that.className);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, className, capacity, length, maxVelocity);
+        return Objects.hash(id, className, capacity, length, maxVelocity, deceleration);
     }
 
     @OneToMany(mappedBy = "carriageClassesByCarriageClass")

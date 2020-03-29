@@ -8,7 +8,6 @@ public class SimulationTime {
     // The time a thread has to pause (in milliseconds) in order to make the pace of the simulation conducive to
     // visualization
     private static final int DEFAULT_SLEEP_TIME_IN_MILLISECONDS = 1000;
-
     public static final AtomicInteger SLEEP_TIME_MILLISECONDS = new AtomicInteger(DEFAULT_SLEEP_TIME_IN_MILLISECONDS);
 
     // Denotes the starting time of the visualization

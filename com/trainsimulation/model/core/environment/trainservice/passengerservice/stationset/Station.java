@@ -2,6 +2,7 @@ package com.trainsimulation.model.core.environment.trainservice.passengerservice
 
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.infrastructure.track.Track;
+import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.StationProperty;
 import com.trainsimulation.model.db.entity.StationsEntity;
 import com.trainsimulation.model.simulator.SimulationTime;
 import com.trainsimulation.model.utility.Schedule;
@@ -30,16 +31,8 @@ public class Station extends StationSet {
     // Represents this station's distance to the previous station, according to its sequence
     private final int distanceToPrevious;
 
-    public Station(Station station) {
-        super(station.getTrainSystem());
-
-        this.name = station.getName();
-        this.sequence = station.getSequence();
-        this.operatingHours = new Schedule(station.getOperatingHours());
-        this.capacity = new StationCapacity(station.getCapacity());
-        this.platforms = new EnumMap<>(station.getPlatforms());
-        this.distanceToPrevious = station.getDistanceToPrevious();
-    }
+    // Represents a summarized version of this station
+    private final StationProperty stationProperty;
 
     public Station(TrainSystem trainSystem, StationsEntity stationsEntity) {
         super(trainSystem);
@@ -53,10 +46,10 @@ public class Station extends StationSet {
 
         // Set the platforms up
         this.platforms = new EnumMap<>(Track.Direction.class);
-
         this.platforms.put(Track.Direction.NORTHBOUND, new Platform(trainSystem, Platform.LRT_2_PLATFORM_LENGTH));
-
         this.platforms.put(Track.Direction.SOUTHBOUND, new Platform(trainSystem, Platform.LRT_2_PLATFORM_LENGTH));
+
+        this.stationProperty = new StationProperty(this);
     }
 
     public String getName() {
@@ -81,6 +74,10 @@ public class Station extends StationSet {
 
     public int getDistanceToPrevious() {
         return distanceToPrevious;
+    }
+
+    public StationProperty getStationProperty() {
+        return stationProperty;
     }
 
     // Checks the time, inflow rate, current number of passengers in concourse and platform areas, and operational

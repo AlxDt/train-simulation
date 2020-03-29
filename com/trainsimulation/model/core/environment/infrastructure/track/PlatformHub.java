@@ -13,13 +13,6 @@ public class PlatformHub extends Track {
     // Allows a segment to come out of the platform
     private final Junction outConnector;
 
-//    public PlatformHub(PlatformHub platformHub) {
-//        super(platformHub.getTrainSystem());
-//
-//        // Connect the segments of the platform hub
-//        Track.setPlatformHub(inConnector, platformSegment, outConnector);
-//    }
-
     public PlatformHub(TrainSystem trainSystem, final int platformSegmentLength) {
         super(trainSystem);
 
