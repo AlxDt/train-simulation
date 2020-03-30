@@ -45,4 +45,8 @@ public class TrainQueue {
     public synchronized int getTrainQueueSize() {
         return this.trainCarriages.size();
     }
+
+    public synchronized void clearTrainQueue() {
+        this.trainCarriages.clear();
+    }
 }

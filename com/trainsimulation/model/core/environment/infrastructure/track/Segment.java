@@ -1,6 +1,7 @@
 package com.trainsimulation.model.core.environment.infrastructure.track;
 
 import com.trainsimulation.model.core.environment.TrainSystem;
+import com.trainsimulation.model.core.environment.trainservice.maintenance.Depot;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.utility.TrainQueue;
 
@@ -26,6 +27,9 @@ public class Segment extends Track {
 
     // Represents the station owner of this segment (null if none)
     private Station station;
+
+    // Represents the depot owner of this segment (null if none)
+    private Depot depot;
 
     // Represents the platform hub this segment is on (null if none)
     private PlatformHub platformHub;
@@ -73,6 +77,14 @@ public class Segment extends Track {
 
     public void setStation(Station station) {
         this.station = station;
+    }
+
+    public Depot getDepot() {
+        return depot;
+    }
+
+    public void setDepot(Depot depot) {
+        this.depot = depot;
     }
 
     public TrainQueue getTrainQueue() {

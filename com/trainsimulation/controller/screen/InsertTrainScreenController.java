@@ -134,16 +134,16 @@ public class InsertTrainScreenController extends ScreenController {
         Stage stage = (Stage) insertTrainButton.getScene().getWindow();
 
         // Get the selected values
-        Train selectedTrain = (Train) inactiveTrainsTable.getSelectionModel().getSelectedItem().getPassengerService();
+        Train selectedTrain = (Train) inactiveTrainsTable.getSelectionModel().getSelectedItem().getOwner();
         List<StationProperty> selectedStations = stationsList.getSelectionModel().getSelectedItems();
 
         List<Station> chosenStations = new ArrayList<>();
 
         for (StationProperty stationProperty : selectedStations) {
-            chosenStations.add((Station) stationProperty.getPassengerService());
+            chosenStations.add((Station) stationProperty.getOwner());
         }
 
-        selectedTrain.getTrainMovement().setStationStops(chosenStations);
+        selectedTrain.getTrainMovement().getStationStops().addAll(chosenStations);
 
         // Set the return value of this controller - the train selected with its chosen stations
         this.getWindowOutput().put(OUTPUT_KEY, selectedTrain);

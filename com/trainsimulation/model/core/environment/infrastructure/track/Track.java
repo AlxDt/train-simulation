@@ -64,8 +64,20 @@ public abstract class Track extends Infrastructure {
 
     // Connect a depot with a junction
     public static void connectDepot(Depot depot, Junction inJunction, Junction outJunction, int depotSegmentLength) {
-        depot.getPlatformHub().getPlatformSegment().setName(Segment.SegmentIdentifier.DEPOT
+        PlatformHub northboundPlatformHub = depot.getPlatforms().get(Direction.NORTHBOUND).getPlatformHub();
+        PlatformHub southboundPlatformHub = depot.getPlatforms().get(Direction.SOUTHBOUND).getPlatformHub();
+
+        Segment northboundPlatformSegment = northboundPlatformHub.getPlatformSegment();
+        Segment southboundPlatformSegment = southboundPlatformHub.getPlatformSegment();
+
+        northboundPlatformSegment.setName(Segment.SegmentIdentifier.DEPOT
                 + Segment.SegmentIdentifier.DELIMITER + Segment.SegmentIdentifier.DEPOT_OUT);
+
+        southboundPlatformSegment.setName(Segment.SegmentIdentifier.DEPOT
+                + Segment.SegmentIdentifier.DELIMITER + Segment.SegmentIdentifier.DEPOT_IN);
+
+        northboundPlatformHub.getPlatformSegment().setDepot(depot);
+        southboundPlatformHub.getPlatformSegment().setDepot(depot);
 
         Segment segmentIn = new Segment(depot.getTrainSystem(), depotSegmentLength);
         segmentIn.setName(Segment.SegmentIdentifier.DEPOT + Segment.SegmentIdentifier.DELIMITER
@@ -75,8 +87,8 @@ public abstract class Track extends Infrastructure {
         segmentOut.setName(Segment.SegmentIdentifier.DEPOT + Segment.SegmentIdentifier.DELIMITER
                 + Segment.SegmentIdentifier.DEPOT_OUT);
 
-        connect(outJunction, segmentIn, depot.getPlatformHub().getInConnector());
-        connect(depot.getPlatformHub().getOutConnector(), segmentOut, inJunction);
+        connect(outJunction, segmentIn, southboundPlatformHub.getInConnector());
+        connect(northboundPlatformHub.getOutConnector(), segmentOut, inJunction);
     }
 
     // Form a northern loop connecting the two platforms of a station

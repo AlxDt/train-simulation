@@ -56,7 +56,7 @@ public class MainScreenController extends ScreenController {
     private Slider simulationSpeedSlider;
 
     @FXML
-    private Button removeTrainButton;
+    private Button editTrainButton;
 
     @FXML
     private Button markTrainButton;
@@ -139,6 +139,9 @@ public class MainScreenController extends ScreenController {
         trainVelocityColumn.setCellValueFactory(trainVelocity -> trainVelocity.getValue().velocityProperty());
 
         // Prepare the table row bindings
+        editTrainButton.disableProperty().bind(Bindings.isEmpty(activeTrainsTable.getSelectionModel().getSelectedItems()
+        ));
+
         markTrainButton.disableProperty().bind(Bindings.isEmpty(activeTrainsTable.getSelectionModel().getSelectedItems()
         ));
 
@@ -259,9 +262,8 @@ public class MainScreenController extends ScreenController {
                 // been added to a segment in the the system without the previous one not having left it yet
                 addTrainButton.setDisable(true);
 
-                // Get a train from that list of inactive trains and activate it
-                assert inactiveTrains.remove(selectedTrain) : "Selected train was unable to be selected";
-                selectedTrain.activate(activeTrains);
+                // Get a train from that list of inactive trains and deploy it
+                selectedTrain.deploy(activeTrains, inactiveTrains);
 
                 // Reset the choices, as one train has already been chosen
                 insertTrainScreenController.updateTrainChoices();
@@ -290,10 +292,63 @@ public class MainScreenController extends ScreenController {
     }
 
     @FXML
+    public void editTrainAction() throws IOException {
+        FXMLLoader loader = ScreenController.getLoader(
+                getClass(),
+                "/com/trainsimulation/view/EditTrainInterface.fxml");
+        Parent root = loader.load();
+
+        EditTrainScreenController editTrainScreenController = loader.getController();
+
+        // Get the train selected
+        Train trainSelected = (Train) activeTrainsTable.getSelectionModel().getSelectedItem().getOwner();
+
+        // Only render the content if the train is active
+        if (trainSelected.getTrainMovement().isActive()) {
+            // Set the window input
+            editTrainScreenController.getWindowInput().put(EditTrainScreenController.INPUT_KEYS[0], trainSelected);
+            editTrainScreenController.getWindowInput().put(EditTrainScreenController.INPUT_KEYS[1],
+                    getActiveSimulationContext().getTrainSystem().getStations());
+
+            // Insert input values
+            editTrainScreenController.setElements();
+        }
+
+        editTrainScreenController.showWindow(
+                root,
+                "Edit train #" + trainSelected.getIdentifier(),
+                true);
+
+        // Set the buttons up, if the dialog was closed due to the set up button
+        if (editTrainScreenController.isClosedWithAction()) {
+            // Get the edited train
+            Train editedTrain
+                    = (Train) editTrainScreenController.getWindowOutput().get(EditTrainScreenController.OUTPUT_KEY);
+
+            // If the train was deactivated, prepare rearming the add train button
+            if (!editedTrain.getTrainMovement().isActive()) {
+                // Run a quick thread to monitor the rearming of the add train button
+                // This code is in a separate thread to avoid choking the JavaFX UI thread
+                new Thread(() -> {
+                    try {
+                        // Wait until the train enters a station from the depot for the first time
+                        MainScreenController.ARM_ADD_TRAIN_BUTTON.acquire();
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace();
+                    }
+
+                    // Eventually enable this button
+                    addTrainButton.setDisable(false);
+                }).start();
+            }
+        }
+    }
+
+    @FXML
     public void markAction() {
         // Mark the selected train
         GraphicsController.markedTrain = (Train) activeTrainsTable.getSelectionModel().getSelectedItem()
-                .getPassengerService();
+                .getOwner();
     }
 
     @FXML
@@ -405,7 +460,7 @@ public class MainScreenController extends ScreenController {
     }
 
     // Called when changing tabs, this requests for an update to the UI details
-    private void requestUpdateUI(final TrainSystem activeTrainSystem) {
+    public void requestUpdateUI(final TrainSystem activeTrainSystem) {
         Platform.runLater(() -> {
             // Update the train system information on the UI
             updateTrainSystem(activeTrainSystem);

@@ -4,9 +4,10 @@ import com.trainsimulation.controller.Main;
 import com.trainsimulation.controller.screen.MainScreenController;
 import com.trainsimulation.model.core.agent.Agent;
 import com.trainsimulation.model.core.environment.TrainSystem;
+import com.trainsimulation.model.core.environment.infrastructure.track.Segment;
+import com.trainsimulation.model.core.environment.infrastructure.track.Track;
 import com.trainsimulation.model.core.environment.trainservice.maintenance.Depot;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.TrainProperty;
-import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.db.DatabaseQueries;
 import com.trainsimulation.model.db.entity.TrainCarriagesEntity;
 import com.trainsimulation.model.db.entity.TrainsEntity;
@@ -26,15 +27,22 @@ public class Train extends TrainSet implements Agent {
     private final LinkedList<TrainCarriage> trainCarriages;
 
     // Contains the variables relevant to the train's movement
-    private final TrainMovement trainMovement;
+    private TrainMovement trainMovement;
 
     // Contains a summarized representation of this train (for table tracking purposes)
-    private final TrainProperty trainProperty;
+    private TrainProperty trainProperty;
 
     public Train(TrainSystem trainSystem, TrainsEntity trainsEntity) {
         super(trainSystem, trainsEntity.getId());
 
         this.trainCarriages = new LinkedList<>();
+
+        resetTrain(trainSystem);
+    }
+
+    private void resetTrain(TrainSystem trainSystem) {
+        // Remove all train carriages, if any
+        this.trainCarriages.clear();
 
         // Get the carriages associated with this train
         List<TrainCarriagesEntity> trainCarriagesEntities = DatabaseQueries.getTrainCarriages(
@@ -83,8 +91,16 @@ public class Train extends TrainSet implements Agent {
         return trainMovement;
     }
 
+    public void setTrainMovement(TrainMovement trainMovement) {
+        this.trainMovement = trainMovement;
+    }
+
     public TrainProperty getTrainProperty() {
         return trainProperty;
+    }
+
+    public void setTrainProperty(TrainProperty trainProperty) {
+        this.trainProperty = trainProperty;
     }
 
     @Override
@@ -92,7 +108,8 @@ public class Train extends TrainSet implements Agent {
         try {
             // Originate the train from the depot belonging to the train system where this train belongs to
             Depot depot = this.getTrainSystem().getDepot();
-            this.trainMovement.setTrainAtSegment(depot.getPlatformHub().getPlatformSegment(), CARRIAGE_GAP);
+            this.trainMovement.setTrainAtSegment(depot.getPlatforms().get(Track.Direction.NORTHBOUND)
+                    .getPlatformHub().getPlatformSegment(), CARRIAGE_GAP);
 
             // Take note of the actions made
             TrainMovement.TrainAction trainAction;
@@ -138,6 +155,13 @@ public class Train extends TrainSet implements Agent {
 
                         // Wait in the station for the specified amount of time
                         while (this.trainMovement.waitAtStation() && !Simulator.getDone().get()) {
+                            // If the train has been deactivated while waiting at a station, this will serve as the
+                            // train's final station stop
+                            // TODO: Maybe extend the waiting time to account for passengers disembarking?
+                            if (!this.getTrainMovement().isActive()) {
+                                this.getTrainMovement().setDisembarkedWhenRemoved(true);
+                            }
+
                             // Pause the thread
                             Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
                         }
@@ -145,7 +169,17 @@ public class Train extends TrainSet implements Agent {
                         break;
                 }
 
+                // Finally, check if the train has reached the home depot
+                // If it has, then the train is now ready to despawn
+                if (!this.getTrainMovement().isActive() && trainAction == TrainMovement.TrainAction.DEPOT_STOP) {
+                    this.pullOut(MainScreenController.getActiveSimulationContext().getTrainSystem().getActiveTrains(),
+                            MainScreenController.getActiveSimulationContext().getTrainSystem().getInactiveTrains());
+
+                    break;
+                }
+
                 // Update the summary
+                // TODO: Include train action in properties
                 this.trainProperty.updateTrainProperty(this.identifier, this.trainMovement, this.trainCarriages
                         .getFirst());
             }
@@ -154,12 +188,47 @@ public class Train extends TrainSet implements Agent {
         }
     }
 
-    // Activate a train
-    public void activate(List<Train> activeTrains) {
-        // Add it to the list of active trains
+    // Deploy a train
+    public void deploy(List<Train> activeTrains, List<Train> inactiveTrains) {
+        // Remove this train from the list of inactive trains
+        inactiveTrains.remove(this);
+
+        // Add this train to the list of active trains
         activeTrains.add(this);
+
+        // Set the train status to active
+        this.getTrainMovement().setActive(true);
 
         // Finally, start the train thread
         new Thread(this).start();
+    }
+
+    // Pull a train out of the system
+    public void pullOut(List<Train> activeTrains, List<Train> inactiveTrains) {
+        // Remove this train from the list of active trains
+        activeTrains.remove(this);
+
+        // Add this train to the list of deactivated trains
+        inactiveTrains.add(this);
+
+        // Clear the segment(s) where this train used to be
+        // Release the signals for these segments as well
+        Segment segment;
+
+        for (TrainCarriage trainCarriage : this.trainCarriages) {
+            segment = trainCarriage.getTrainCarriageLocation().getSegmentLocation();
+
+            segment.getTrainQueue().clearTrainQueue();
+            segment.getFrom().getSignal().release();
+        }
+
+        // Reset the train to its default settings
+        this.resetTrain(this.getTrainSystem());
+
+        // Enable the insert train button
+        MainScreenController.ARM_ADD_TRAIN_BUTTON.release();
+
+        // Update the UI elements
+        Main.mainScreenController.requestUpdateUI(MainScreenController.getActiveSimulationContext().getTrainSystem());
     }
 }

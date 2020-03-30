@@ -4,10 +4,12 @@ import com.trainsimulation.controller.graphics.GraphicsController;
 import com.trainsimulation.controller.screen.MainScreenController;
 import com.trainsimulation.model.core.environment.infrastructure.track.Junction;
 import com.trainsimulation.model.core.environment.infrastructure.track.Segment;
+import com.trainsimulation.model.core.environment.trainservice.maintenance.Depot;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.TrainCarriage;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Semaphore;
@@ -18,6 +20,9 @@ public class TrainMovement {
     // Prepare the headway distances (the distances to be maintained between each train)
     private static final int DEFAULT_HEADWAY_DISTANCE = 300;
     public static final AtomicInteger HEADWAY_DISTANCE = new AtomicInteger(DEFAULT_HEADWAY_DISTANCE);
+
+    // Special value for when the track is a dead end
+    private static final double TRACK_ENDS = -1.0;
 
     // Manages the synchronization between different train movements
     private static final Semaphore MOVEMENT_LOCK = new Semaphore(1, true);
@@ -46,7 +51,7 @@ public class TrainMovement {
     private final double deceleration;
 
     // Denotes the stations which this train should stop at
-    private List<Station> stationStops;
+    private final List<Station> stationStops;
 
     // The index of the current acceleration factor
     private int accelerationIndex = 0;
@@ -69,6 +74,12 @@ public class TrainMovement {
     // Denotes whether the train has recently waited at the end
     private boolean waitedAtEnd;
 
+    // Denotes whether this train has already made its stop to disembark passengers when it was removed
+    private boolean disembarkedWhenRemoved;
+
+    // Denotes whether the train is active or not (if it isn't, it should be going back to the depot)
+    private volatile boolean isActive;
+
     public TrainMovement(final double maxVelocity, final double deceleration, final Train train) {
         // TODO: Make editable (remove from database)
         final int waitingTime = 30;
@@ -82,9 +93,12 @@ public class TrainMovement {
         this.endWaitingTime = waitingTime * endWaitingTimeFactor;
         this.maxVelocity = maxVelocity;
         this.accelerationFactor = 0.0;
-
         this.previousStation = null;
+
         this.waitedAtEnd = false;
+        this.disembarkedWhenRemoved = false;
+
+        this.stationStops = new ArrayList<>();
 
         this.train = train;
     }
@@ -173,8 +187,20 @@ public class TrainMovement {
         return stationStops;
     }
 
-    public void setStationStops(List<Station> stationStops) {
-        this.stationStops = stationStops;
+    public boolean isActive() {
+        return isActive;
+    }
+
+    public void setActive(boolean active) {
+        isActive = active;
+    }
+
+    public boolean isDisembarkedWhenRemoved() {
+        return disembarkedWhenRemoved;
+    }
+
+    public void setDisembarkedWhenRemoved(boolean disembarkedWhenRemoved) {
+        this.disembarkedWhenRemoved = disembarkedWhenRemoved;
     }
 
     // Make this train move forward while looking forward to see if there is nothing in its way
@@ -182,7 +208,7 @@ public class TrainMovement {
         // Only one train may move at a time to avoid race conditions
         TrainMovement.MOVEMENT_LOCK.acquire();
 
-        // Before doing anything, check whether moving is even possible in the first place
+        // Check whether moving is even possible in the first place
         // Lookahead distance (in m)
         TrainAction actionTaken = decideAction(HEADWAY_DISTANCE.get());
 
@@ -225,31 +251,51 @@ public class TrainMovement {
                 return TrainAction.END_STOP;
             }
         } else if (actionTaken == TrainAction.STATION_STOP) {
-            // Check if the train has already stopped for this station, in which case, it doesn't need to stop anymore
-            // However, when a train changes direction, its previous station will be the same as its next station, so
-            // take that into account
             Station currentStation = this.getTrain().getHead().getTrainCarriageLocation().getSegmentLocation()
                     .getStation();
 
-            if (this.waitedAtEnd || this.previousStation != currentStation) {
-                // Stop the train
-                this.velocity = 0.0;
+            // If the train is active, stop at this station
+            // If the train is not active:
+            //   - If the train is about to or has just turned around the end, keep going; the passengers have already
+            //     been disembarked
+            //   - Else:
+            //     - If the train has not yet disembarked its passengers, stop at this station
+            //     - Else, keep going, the passengers have already been disembarked
+            if (this.isActive
+                    || (!this.isActive && this.previousStation != currentStation && !this.disembarkedWhenRemoved)) {
+                // If the train is to be inactive, this will be the train's final stop before returning to the depot
+                if (!this.isActive) {
+                    this.disembarkedWhenRemoved = true;
+                }
 
-                // This station has now begun stopped in this station, so this station will now be considered a previous
-                // one
-                this.previousStation = currentStation;
+                // Check if the train has already stopped for this station, in which case, it doesn't need to stop
+                // anymore
+                // However, when a train changes direction, its previous station will be the same as its next station,
+                // so take that into account
+                if (this.waitedAtEnd || this.previousStation != currentStation) {
+                    // Stop the train
+                    this.velocity = 0.0;
 
-                // Since the train is in a station, we may now reset the waited at end variable
-                this.waitedAtEnd = false;
+                    // This station has now begun stopped in this station, so this station will now be considered a previous
+                    // one
+                    this.previousStation = currentStation;
 
-                // Request a draw
-                GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
-                        MainScreenController.getActiveSimulationContext().getTrainSystem(), false);
+                    // Since the train is in a station, we may now reset the waited at end variable
+                    this.waitedAtEnd = false;
 
-                // Signal to all trains waiting to process their movement that they may now proceed to do so
-                TrainMovement.MOVEMENT_LOCK.release();
+                    // Request a draw
+                    GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+                            MainScreenController.getActiveSimulationContext().getTrainSystem(), false);
 
-                return TrainAction.STATION_STOP;
+                    // Signal to all trains waiting to process their movement that they may now proceed to do so
+                    TrainMovement.MOVEMENT_LOCK.release();
+
+                    return TrainAction.STATION_STOP;
+                }
+            } else {
+                if (!this.isActive) {
+                    this.disembarkedWhenRemoved = true;
+                }
             }
         } else if (actionTaken == TrainAction.SIGNAL_STOP) {
             // Stop the train
@@ -263,6 +309,15 @@ public class TrainMovement {
             TrainMovement.MOVEMENT_LOCK.release();
 
             return TrainAction.SIGNAL_STOP;
+        } else if (actionTaken == TrainAction.DEPOT_STOP) {
+            // If this train is inactive, it is time for it to despawn
+            if (!this.isActive) {
+                // Signal to all trains waiting to process their movement that they may now proceed to do so
+                TrainMovement.MOVEMENT_LOCK.release();
+
+                // Deactivate this train thread
+                return TrainAction.DEPOT_STOP;
+            }
         }
 
         // If it reaches this point, move the train
@@ -302,7 +357,17 @@ public class TrainMovement {
                         segmentClearance -= currentSegment.getLength();
 
                         // TODO: Do not assume 0 index
-                        currentSegment = currentSegment.getTo().getOutSegments().get(0);
+                        // If the train has been deactivated, switch to the depot track when it's available
+                        if (this.isActive) {
+                            currentSegment = currentSegment.getTo().getOutSegments().get(0);
+                        } else {
+                            // TODO: Find something better to indicate the depot entry segment
+                            if (currentSegment.getTo().getOutSegments().size() > 1) {
+                                currentSegment = currentSegment.getTo().getOutSegments().get(1);
+                            } else {
+                                currentSegment = currentSegment.getTo().getOutSegments().get(0);
+                            }
+                        }
                     } while (segmentClearance / currentSegment.getLength() >= 1.0);
 
                     // If this carriage is the head of the train, try to enter the next segment
@@ -419,12 +484,18 @@ public class TrainMovement {
         // Get the junction after this segment
         Junction nextJunction = currentSegment.getTo();
 
+        // Check whether this train is currently in a depot
+        // If it is, and the train has been deactivated, the train has to be despawned
+        Depot currentDepot = currentSegment.getDepot();
+
         // Check whether this train is currently in a station
         // If it is, check whether this station is included in this train's stops
         // If it is, proceed until the train would have missed the station if it went any further
         Station currentStation = currentSegment.getStation();
 
-        if (currentStation != null) {
+        if (currentDepot != null) {
+            return TrainAction.DEPOT_STOP;
+        } else if (currentStation != null) {
             if (this.stationStops.contains(currentStation)) {
                 // If the would-be clearance would miss the station, it is time to stop
                 if (nextClearance > currentSegment.getLength()) {
@@ -482,7 +553,7 @@ public class TrainMovement {
 
             // If the separation between the next train and the current train is less than the lookahead distance, halt
             // Return a signal to indicate a need to slow down
-            if (separation <= lookaheadLimit) {
+            if (separation != TrainMovement.TRACK_ENDS && separation <= lookaheadLimit) {
                 // Denotes the percentage of the lookahead distance within which the train has to slow down
                 final double separationSlowDownPercentage = 0.75;
 
@@ -519,8 +590,8 @@ public class TrainMovement {
     // to be found
     // If the distance between the two trains turns out to be more than the lookahead limit, just return a best effort
     // computation to avoid wasting time
-    private double computeDistance(TrainCarriage currentTrainHead, TrainCarriage nextTrainTail,
-                                   int lookaheadLimit) {
+    // If the track in front of the train is a dead end, return a special value
+    private double computeDistance(TrainCarriage currentTrainHead, TrainCarriage nextTrainTail, int lookaheadLimit) {
         double distance;
 
         // If the two trains are in the same segment, just simply compute the distance between them
@@ -555,9 +626,14 @@ public class TrainMovement {
             boolean exceedsLookahead = false;
 
             while (true) {
-                // Look at the next segment
                 // TODO: Do not assume 0 index; maybe implement something in Junction to just select the main line route
-                currentTrainSegment = currentTrainSegment.getTo().getOutSegments().get(0);
+                try {
+                    // Look at the next segment, but only if there is
+                    // If there isn't, no point in looking further
+                    currentTrainSegment = currentTrainSegment.getTo().getOutSegments().get(0);
+                } catch (IndexOutOfBoundsException ex) {
+                    return TrainMovement.TRACK_ENDS;
+                }
 
                 // Check if the accumulated distance exceeds the lookahead limit (if it does, no point in this entire
                 // calculation, the train may proceed safely)
@@ -715,6 +791,7 @@ public class TrainMovement {
         HEADWAY_STOP, // Tell the train to stop because of a train in front of it (for headway maintenance)
         END_STOP, // Tell the train to stop because it is at the end of the line
         STATION_STOP, // Tell the train to stop because the train is in a station,
-        SIGNAL_STOP // Tell the train to stop because a signal says so
+        SIGNAL_STOP, // Tell the train to stop because a signal says so
+        DEPOT_STOP, // Tell the train to stop at the depot - this also means that the train has been signaled to despawn
     }
 }

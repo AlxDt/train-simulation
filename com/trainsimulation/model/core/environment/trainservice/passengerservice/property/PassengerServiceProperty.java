@@ -25,7 +25,7 @@ public class PassengerServiceProperty {
         return objectsObservableList;
     }
 
-    public PassengerService getPassengerService() {
+    public PassengerService getOwner() {
         return passengerService;
     }
 }
