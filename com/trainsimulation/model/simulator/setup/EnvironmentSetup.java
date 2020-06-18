@@ -28,7 +28,7 @@ public class EnvironmentSetup {
         for (TrainSystemInformation trainSystemInformation : trainSystemInformations) {
             switch (trainSystemInformation.getName()) {
                 case "LRT-1":
-//                    trainSystems.add(setupLRT1(databaseInterface, trainSystemInformation));
+                    trainSystems.add(setupLRT1(databaseInterface, trainSystemInformation));
 
                     break;
                 case "LRT-2":
@@ -36,7 +36,7 @@ public class EnvironmentSetup {
 
                     break;
                 case "MRT-3":
-//                    trainSystems.add(setupLRT1(databaseInterface, trainSystemInformation));
+                    trainSystems.add(setupMRT3(databaseInterface, trainSystemInformation));
 
                     break;
             }
@@ -46,8 +46,85 @@ public class EnvironmentSetup {
     }
 
     // TODO: Implement LRT-1 setup logic
-    private static TrainSystem setupLRT1(TrainSystemInformation trainSystemInformation) {
-        return null;
+    private static TrainSystem setupLRT1(DatabaseInterface databaseInterface,
+                                         TrainSystemInformation trainSystemInformation) {
+        // Create a train system object
+        TrainSystem trainSystem = new TrainSystem(trainSystemInformation);
+
+        // Retrieve all stations
+        List<Station> stations = DatabaseQueries.getStations(databaseInterface, trainSystem);
+
+        // Add each to this train system's record
+        trainSystem.getStations().addAll(stations);
+
+        // Connect all stations
+        for (int stationIndex = 1; stationIndex < stations.size(); stationIndex++) {
+            // Get the preceding station
+            Station precedingStation = stations.get(stationIndex - 1);
+
+            // Get the current station
+            Station currentStation = stations.get(stationIndex);
+
+            // Make sure that the sequence of the stations are correct
+            assert currentStation.getSequence() > precedingStation.getSequence() : "Stations are out of sequence";
+
+            // Connect the two together
+            Track.connectStations(precedingStation, currentStation, currentStation.getDistanceToPrevious());
+        }
+
+        // Get information about the train line's edge segments
+        List<EndSegmentsEntity> endSegmentsEntities = DatabaseQueries.getEndSegmentInformation(databaseInterface,
+                trainSystemInformation);
+
+        int northEndSegmentLength = endSegmentsEntities.get(1).getLength();
+        int southEndSegmentLength = endSegmentsEntities.get(0).getLength();
+
+        // "Close" the loop of the two edge stations
+        Station northEdgeStation = stations.get(stations.size() - 1);
+        Station southEdgeStation = stations.get(0);
+
+        Track.formNorthLoop(northEdgeStation, northEndSegmentLength);
+        Track.formSouthLoop(southEdgeStation, southEndSegmentLength);
+
+        // Mark all segments which belong to a station as belonging to that station
+        PlatformHub currentPlatformHub;
+
+        for (Station station : stations) {
+            currentPlatformHub = station.getPlatforms().get(Track.Direction.NORTHBOUND).getPlatformHub();
+
+            currentPlatformHub.getPlatformSegment().setStation(station);
+            currentPlatformHub.getPlatformSegment().setPlatformHub(currentPlatformHub);
+            currentPlatformHub.getPlatformSegment().setDirection(Track.Direction.NORTHBOUND);
+
+            currentPlatformHub = station.getPlatforms().get(Track.Direction.SOUTHBOUND).getPlatformHub();
+
+            currentPlatformHub.getPlatformSegment().setStation(station);
+            currentPlatformHub.getPlatformSegment().setPlatformHub(currentPlatformHub);
+            currentPlatformHub.getPlatformSegment().setDirection(Track.Direction.SOUTHBOUND);
+        }
+
+        // Get the junctions where the depot is to be connected
+        // The depot is to be connected to Baclaran station - the northernmost station in the system
+        Station depotStation = stations.get(stations.size() - 1);
+
+        Junction inJunction = depotStation.getPlatforms().get(Track.Direction.SOUTHBOUND).getPlatformHub()
+                .getInConnector();
+        Junction outJunction = depotStation.getPlatforms().get(Track.Direction.NORTHBOUND).getPlatformHub()
+                .getOutConnector();
+
+        // Get the length of the spur segment which connects to the depot
+        int spurDepotSegmentLength = DatabaseQueries.getSpurDepotSegmentLength(databaseInterface,
+                trainSystemInformation);
+
+        // Create the depot object, then connect it to the rest of the constructed train line
+        Depot depot = new Depot(trainSystem);
+        Track.connectDepot(depot, inJunction, outJunction, spurDepotSegmentLength);
+
+        // Set the newly connected depot of the train system
+        trainSystem.setDepot(depot);
+
+        // Return the newly created train system
+        return trainSystem;
     }
 
     // Set the LRT-2 system up
@@ -99,11 +176,13 @@ public class EnvironmentSetup {
 
             currentPlatformHub.getPlatformSegment().setStation(station);
             currentPlatformHub.getPlatformSegment().setPlatformHub(currentPlatformHub);
+            currentPlatformHub.getPlatformSegment().setDirection(Track.Direction.NORTHBOUND);
 
             currentPlatformHub = station.getPlatforms().get(Track.Direction.SOUTHBOUND).getPlatformHub();
 
             currentPlatformHub.getPlatformSegment().setStation(station);
             currentPlatformHub.getPlatformSegment().setPlatformHub(currentPlatformHub);
+            currentPlatformHub.getPlatformSegment().setDirection(Track.Direction.SOUTHBOUND);
         }
 
         // Get the junctions where the depot is to be connected
@@ -130,8 +209,85 @@ public class EnvironmentSetup {
         return trainSystem;
     }
 
-    // TODO: Implement MRT-3 setup logic
-    private static TrainSystem setupMRT3(TrainSystemInformation trainSystemInformation) {
-        return null;
+    // Set the MRT-3 system up
+    private static TrainSystem setupMRT3(DatabaseInterface databaseInterface,
+                                         TrainSystemInformation trainSystemInformation) {
+        // Create a train system object
+        TrainSystem trainSystem = new TrainSystem(trainSystemInformation);
+
+        // Retrieve all stations
+        List<Station> stations = DatabaseQueries.getStations(databaseInterface, trainSystem);
+
+        // Add each to this train system's record
+        trainSystem.getStations().addAll(stations);
+
+        // Connect all stations
+        for (int stationIndex = 1; stationIndex < stations.size(); stationIndex++) {
+            // Get the preceding station
+            Station precedingStation = stations.get(stationIndex - 1);
+
+            // Get the current station
+            Station currentStation = stations.get(stationIndex);
+
+            // Make sure that the sequence of the stations are correct
+            assert currentStation.getSequence() > precedingStation.getSequence() : "Stations are out of sequence";
+
+            // Connect the two together
+            Track.connectStations(precedingStation, currentStation, currentStation.getDistanceToPrevious());
+        }
+
+        // Get information about the train line's edge segments
+        List<EndSegmentsEntity> endSegmentsEntities = DatabaseQueries.getEndSegmentInformation(databaseInterface,
+                trainSystemInformation);
+
+        int northEndSegmentLength = endSegmentsEntities.get(1).getLength();
+        int southEndSegmentLength = endSegmentsEntities.get(0).getLength();
+
+        // "Close" the loop of the two edge stations
+        Station northEdgeStation = stations.get(stations.size() - 1);
+        Station southEdgeStation = stations.get(0);
+
+        Track.formNorthLoop(northEdgeStation, northEndSegmentLength);
+        Track.formSouthLoop(southEdgeStation, southEndSegmentLength);
+
+        // Mark all segments which belong to a station as belonging to that station
+        PlatformHub currentPlatformHub;
+
+        for (Station station : stations) {
+            currentPlatformHub = station.getPlatforms().get(Track.Direction.NORTHBOUND).getPlatformHub();
+
+            currentPlatformHub.getPlatformSegment().setStation(station);
+            currentPlatformHub.getPlatformSegment().setPlatformHub(currentPlatformHub);
+            currentPlatformHub.getPlatformSegment().setDirection(Track.Direction.NORTHBOUND);
+
+            currentPlatformHub = station.getPlatforms().get(Track.Direction.SOUTHBOUND).getPlatformHub();
+
+            currentPlatformHub.getPlatformSegment().setStation(station);
+            currentPlatformHub.getPlatformSegment().setPlatformHub(currentPlatformHub);
+            currentPlatformHub.getPlatformSegment().setDirection(Track.Direction.SOUTHBOUND);
+        }
+
+        // Get the junctions where the depot is to be connected
+        // The depot is to be connected to North Avenue station - the southernmost station in the system
+        Station depotStation = stations.get(0);
+
+        Junction inJunction = depotStation.getPlatforms().get(Track.Direction.NORTHBOUND).getPlatformHub()
+                .getInConnector();
+        Junction outJunction = depotStation.getPlatforms().get(Track.Direction.SOUTHBOUND).getPlatformHub()
+                .getOutConnector();
+
+        // Get the length of the spur segment which connects to the depot
+        int spurDepotSegmentLength = DatabaseQueries.getSpurDepotSegmentLength(databaseInterface,
+                trainSystemInformation);
+
+        // Create the depot object, then connect it to the rest of the constructed train line
+        Depot depot = new Depot(trainSystem);
+        Track.connectDepot(depot, inJunction, outJunction, spurDepotSegmentLength);
+
+        // Set the newly connected depot of the train system
+        trainSystem.setDepot(depot);
+
+        // Return the newly created train system
+        return trainSystem;
     }
 }

@@ -46,8 +46,11 @@ public class Station extends StationSet {
 
         // Set the platforms up
         this.platforms = new EnumMap<>(Track.Direction.class);
-        this.platforms.put(Track.Direction.NORTHBOUND, new Platform(trainSystem, Platform.LRT_2_PLATFORM_LENGTH));
-        this.platforms.put(Track.Direction.SOUTHBOUND, new Platform(trainSystem, Platform.LRT_2_PLATFORM_LENGTH));
+        this.platforms.put(Track.Direction.NORTHBOUND, new Platform(trainSystem, Platform.LRT_2_PLATFORM_LENGTH,
+                Track.Direction.NORTHBOUND));
+
+        this.platforms.put(Track.Direction.SOUTHBOUND, new Platform(trainSystem, Platform.LRT_2_PLATFORM_LENGTH,
+                Track.Direction.SOUTHBOUND));
 
         this.stationProperty = new StationProperty(this);
     }

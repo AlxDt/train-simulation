@@ -2,12 +2,11 @@ package com.trainsimulation.model.core.environment.trainservice.passengerservice
 
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.infrastructure.track.PlatformHub;
-import com.trainsimulation.model.db.entity.PlatformsEntity;
+import com.trainsimulation.model.core.environment.infrastructure.track.Track;
 import com.trainsimulation.model.utility.Capacity;
 import com.trainsimulation.model.utility.Schedule;
 
 import java.util.List;
-import java.util.Objects;
 
 // Represents a station's platform in a single direction
 public class Platform extends StationSet {
@@ -34,35 +33,8 @@ public class Platform extends StationSet {
     // Denotes whether the station may be passed through by a train
     private boolean passable;
 
-    public Platform(TrainSystem trainSystem, List<Schedule> peakHoursRange,
-                    List<Schedule> checkInflowRateInterval, Capacity platformCapacity, boolean operational,
-                    boolean passable, final int platformLength) {
-        super(trainSystem);
-
-        this.peakHoursRange = peakHoursRange;
-        this.checkInflowRateInterval = checkInflowRateInterval;
-        this.platformCapacity = platformCapacity;
-        this.operational = operational;
-        this.passable = passable;
-
-        this.platformHub = new PlatformHub(trainSystem, platformLength);
-    }
-
-    public Platform(TrainSystem trainSystem, PlatformsEntity platformsEntity, final int platformLength) {
-        super(trainSystem);
-
-        // TODO: Implement peak hours and check inflow rate functionality
-        this.peakHoursRange = null;
-        this.checkInflowRateInterval = null;
-        this.platformCapacity = new Capacity(platformsEntity.getPlatformCapacity());
-        this.operational = platformsEntity.getOperational() == 1;
-        this.passable = platformsEntity.getOperational() == 1;
-
-        this.platformHub = new PlatformHub(trainSystem, platformLength);
-    }
-
     // FIXME: Temporary constructor - refactor immediately with non-null values from the database
-    public Platform(TrainSystem trainSystem, final int platformLength) {
+    public Platform(TrainSystem trainSystem, final int platformLength, final Track.Direction direction) {
         super(trainSystem);
 
         this.peakHoursRange = null;
@@ -71,7 +43,7 @@ public class Platform extends StationSet {
         this.operational = true;
         this.passable = true;
 
-        this.platformHub = new PlatformHub(trainSystem, platformLength);
+        this.platformHub = new PlatformHub(trainSystem, platformLength, direction);
     }
 
     public List<Schedule> getPeakHoursRange() {

@@ -200,7 +200,7 @@ public class MainScreenController extends ScreenController {
             requestPositionButtonsSetup();
 
             // Update the UI initially
-            requestUpdateUI(getActiveSimulationContext().getTrainSystem());
+            requestUpdateUI(getActiveSimulationContext().getTrainSystem(), false);
         }
     }
 
@@ -286,7 +286,7 @@ public class MainScreenController extends ScreenController {
                 }).start();
 
                 // Update the UI
-                requestUpdateUI(getActiveSimulationContext().getTrainSystem());
+                requestUpdateUI(getActiveSimulationContext().getTrainSystem(), false);
             }
         }
     }
@@ -460,7 +460,7 @@ public class MainScreenController extends ScreenController {
     }
 
     // Called when changing tabs, this requests for an update to the UI details
-    public void requestUpdateUI(final TrainSystem activeTrainSystem) {
+    public void requestUpdateUI(final TrainSystem activeTrainSystem, boolean checkButton) {
         Platform.runLater(() -> {
             // Update the train system information on the UI
             updateTrainSystem(activeTrainSystem);
@@ -468,8 +468,8 @@ public class MainScreenController extends ScreenController {
             updateActiveTrainsTable(activeTrainSystem);
 
             // Check whether the add train button should be disabled
-            if (activeTrainSystem.getInactiveTrains().size() == 0) {
-                addTrainButton.setDisable(true);
+            if (checkButton) {
+                addTrainButton.setDisable(activeTrainSystem.getInactiveTrains().isEmpty());
             }
         });
     }
@@ -515,6 +515,10 @@ public class MainScreenController extends ScreenController {
 
     // For each train system, create a tab for it
     private TabPane createTabs(Scene scene, List<TrainSystem> trainSystems) {
+        // TODO: Automate the generation of these constants
+        // Set the scale down constants of the train system
+        final double[] scaleDownConstants = {0.07, 0.06, 0.0475};
+
         BorderPane borderPane = (BorderPane) scene.getRoot();
         TabPane tabPane = (TabPane) ((BorderPane) borderPane.getCenter()).getCenter();
 
@@ -524,7 +528,9 @@ public class MainScreenController extends ScreenController {
         // Clear the active contexts too
         MainScreenController.SIMULATION_CONTEXTS.clear();
 
-        for (TrainSystem trainSystem : trainSystems) {
+        for (int trainSystemIndex = 0; trainSystemIndex < trainSystems.size(); trainSystemIndex++) {
+            TrainSystem trainSystem = trainSystems.get(trainSystemIndex);
+
             // Create the tab, then add it to the tab pane
             // Add canvases to each tab as well
             // This is where the visualizations will be drawn
@@ -543,9 +549,10 @@ public class MainScreenController extends ScreenController {
             tabPane.getTabs().add(tab);
 
             // Update the active elements
-            MainScreenController.SIMULATION_CONTEXTS.add(new SimulationContext(tab, trainSystem));
+            MainScreenController.SIMULATION_CONTEXTS.add(new SimulationContext(tab, trainSystem,
+                    scaleDownConstants[trainSystemIndex]));
 
-            updateActiveElements(tabPane.getSelectionModel().getSelectedIndex());
+            updateActiveContext(tabPane.getSelectionModel().getSelectedIndex());
         }
 
         // Tell the tab pane that whenever the tab is changed, change the active canvas too, as well as the active train
@@ -555,10 +562,15 @@ public class MainScreenController extends ScreenController {
                 (observable, oldValue, newValue) -> {
                     int index = tabPane.getSelectionModel().getSelectedIndex();
 
-                    updateActiveElements(index);
+                    updateActiveContext(index);
 
                     // Update the UI accordingly
-                    updateActiveTrainCount(getActiveSimulationContext().getTrainSystem());
+                    requestUpdateUI(getActiveSimulationContext().getTrainSystem(), false);
+
+                    // Redraw the graphics
+                    GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+                            MainScreenController.getActiveSimulationContext().getTrainSystem(),
+                            MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
                 }
         );
 
@@ -572,16 +584,21 @@ public class MainScreenController extends ScreenController {
                 "train systems";
 
         // For each tab (which contains a canvas), draw its train system
-        for (int trainsystemindex = 0; trainsystemindex < tabPane.getTabs().size(); trainsystemindex++) {
-            StackPane canvases = MainScreenController.getActiveSimulationContext().getCanvases();
+        StackPane canvases;
+        double scaleDownFactor;
+
+        for (int trainSystemIndex = 0; trainSystemIndex < tabPane.getTabs().size(); trainSystemIndex++) {
+            canvases = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getCanvases();
+            scaleDownFactor = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getScaleDownFactor();
 
             // Draw each train system onto its respective tab
-            GraphicsController.requestDraw(canvases, trainSystems.get(trainsystemindex), true);
+            GraphicsController.requestDraw(canvases, trainSystems.get(trainSystemIndex), scaleDownFactor,
+                    true);
         }
     }
 
     // Update the active canvas and train systems
-    private void updateActiveElements(int index) {
+    private void updateActiveContext(int index) {
         MainScreenController.activeIndex = index;
     }
 }

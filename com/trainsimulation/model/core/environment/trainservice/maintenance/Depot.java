@@ -1,7 +1,6 @@
 package com.trainsimulation.model.core.environment.trainservice.maintenance;
 
 import com.trainsimulation.model.core.environment.TrainSystem;
-import com.trainsimulation.model.core.environment.infrastructure.track.PlatformHub;
 import com.trainsimulation.model.core.environment.infrastructure.track.Track;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Platform;
 
@@ -22,8 +21,11 @@ public class Depot extends Maintenance {
 
         // Set the platforms up
         this.platforms = new EnumMap<>(Track.Direction.class);
-        this.platforms.put(Track.Direction.NORTHBOUND, new Platform(trainSystem, ARBITRARY_DEPOT_LENGTH));
-        this.platforms.put(Track.Direction.SOUTHBOUND, new Platform(trainSystem, ARBITRARY_DEPOT_LENGTH));
+        this.platforms.put(Track.Direction.NORTHBOUND, new Platform(trainSystem, ARBITRARY_DEPOT_LENGTH,
+                Track.Direction.NORTHBOUND));
+
+        this.platforms.put(Track.Direction.SOUTHBOUND, new Platform(trainSystem, ARBITRARY_DEPOT_LENGTH,
+                Track.Direction.SOUTHBOUND));
     }
 
     public Map<Track.Direction, Platform> getPlatforms() {

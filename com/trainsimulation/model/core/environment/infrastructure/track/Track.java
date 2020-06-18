@@ -13,8 +13,8 @@ public abstract class Track extends Infrastructure {
 
     // Connect the components of a platform hub
     static void setPlatformHub(Junction inConnector, Segment platformSegment,
-                               Junction outConnector) {
-        connect(inConnector, platformSegment, outConnector);
+                               Junction outConnector, Direction direction) {
+        connect(inConnector, platformSegment, outConnector, direction);
     }
 
     // Connect two stations with each other
@@ -26,18 +26,21 @@ public abstract class Track extends Infrastructure {
                 = nextStation.getPlatforms().get(Direction.NORTHBOUND).getPlatformHub();
 
         previousPlatformHubOutgoingNB.getPlatformSegment().setName(Segment.SegmentIdentifier.STATION
-                + ":" + previousStation.getName());
+                + Segment.SegmentIdentifier.DELIMITER + previousStation.getName());
+
         nextPlatformHubIncomingNB.getPlatformSegment().setName(Segment.SegmentIdentifier.STATION
-                + ":" + nextStation.getName());
+                + Segment.SegmentIdentifier.DELIMITER + nextStation.getName());
 
         Junction previousStationOutgoingNB = previousPlatformHubOutgoingNB.getOutConnector();
         Junction nextStationIncomingNB = nextPlatformHubIncomingNB.getInConnector();
 
         Segment segmentNB = new Segment(previousStation.getTrainSystem(), distance);
-        segmentNB.setName(Segment.SegmentIdentifier.MAINLINE
-                + ":" + previousStation.getName() + " to " + nextStation.getName());
 
-        connect(previousStationOutgoingNB, segmentNB, nextStationIncomingNB);
+        segmentNB.setDirection(Direction.NORTHBOUND);
+        segmentNB.setName(Segment.SegmentIdentifier.MAINLINE + Segment.SegmentIdentifier.DELIMITER
+                + previousStation.getName() + " " + Segment.SegmentIdentifier.TO + " " + nextStation.getName());
+
+        connect(previousStationOutgoingNB, segmentNB, nextStationIncomingNB, Direction.NORTHBOUND);
 
         // Connect the SB portions of the two stations
         PlatformHub previousPlatformHubIncomingSB
@@ -46,9 +49,9 @@ public abstract class Track extends Infrastructure {
                 = nextStation.getPlatforms().get(Direction.SOUTHBOUND).getPlatformHub();
 
         previousPlatformHubIncomingSB.getPlatformSegment().setName(Segment.SegmentIdentifier.STATION
-                + ":" + previousStation.getName());
+                + Segment.SegmentIdentifier.DELIMITER + previousStation.getName());
         nextPlatformHubOutgoingSB.getPlatformSegment().setName(Segment.SegmentIdentifier.STATION
-                + ":" + nextStation.getName());
+                + Segment.SegmentIdentifier.DELIMITER + nextStation.getName());
 
         Junction previousStationIncomingSB
                 = previousPlatformHubIncomingSB.getInConnector();
@@ -56,10 +59,12 @@ public abstract class Track extends Infrastructure {
                 = nextPlatformHubOutgoingSB.getOutConnector();
 
         Segment segmentSB = new Segment(previousStation.getTrainSystem(), distance);
-        segmentSB.setName(Segment.SegmentIdentifier.MAINLINE
-                + ":" + nextStation.getName() + " to " + previousStation.getName());
 
-        connect(nextStationOutgoingSB, segmentSB, previousStationIncomingSB);
+        segmentSB.setDirection(Direction.SOUTHBOUND);
+        segmentSB.setName(Segment.SegmentIdentifier.MAINLINE + Segment.SegmentIdentifier.DELIMITER
+                + nextStation.getName() + " " + Segment.SegmentIdentifier.TO + " " + previousStation.getName());
+
+        connect(nextStationOutgoingSB, segmentSB, previousStationIncomingSB, Direction.SOUTHBOUND);
     }
 
     // Connect a depot with a junction
@@ -70,25 +75,30 @@ public abstract class Track extends Infrastructure {
         Segment northboundPlatformSegment = northboundPlatformHub.getPlatformSegment();
         Segment southboundPlatformSegment = southboundPlatformHub.getPlatformSegment();
 
+        northboundPlatformSegment.setDepot(depot);
+        northboundPlatformSegment.setDirection(Direction.NORTHBOUND);
         northboundPlatformSegment.setName(Segment.SegmentIdentifier.DEPOT
                 + Segment.SegmentIdentifier.DELIMITER + Segment.SegmentIdentifier.DEPOT_OUT);
 
+        southboundPlatformSegment.setDepot(depot);
+        southboundPlatformSegment.setDirection(Direction.SOUTHBOUND);
         southboundPlatformSegment.setName(Segment.SegmentIdentifier.DEPOT
                 + Segment.SegmentIdentifier.DELIMITER + Segment.SegmentIdentifier.DEPOT_IN);
 
-        northboundPlatformHub.getPlatformSegment().setDepot(depot);
-        southboundPlatformHub.getPlatformSegment().setDepot(depot);
-
         Segment segmentIn = new Segment(depot.getTrainSystem(), depotSegmentLength);
+
+        segmentIn.setDirection(Direction.DEPOT_IN);
         segmentIn.setName(Segment.SegmentIdentifier.DEPOT + Segment.SegmentIdentifier.DELIMITER
                 + Segment.SegmentIdentifier.DEPOT_IN);
 
         Segment segmentOut = new Segment(depot.getTrainSystem(), depotSegmentLength);
+
+        segmentOut.setDirection(Direction.DEPOT_OUT);
         segmentOut.setName(Segment.SegmentIdentifier.DEPOT + Segment.SegmentIdentifier.DELIMITER
                 + Segment.SegmentIdentifier.DEPOT_OUT);
 
-        connect(outJunction, segmentIn, southboundPlatformHub.getInConnector());
-        connect(northboundPlatformHub.getOutConnector(), segmentOut, inJunction);
+        connect(outJunction, segmentIn, southboundPlatformHub.getInConnector(), Direction.DEPOT_IN);
+        connect(northboundPlatformHub.getOutConnector(), segmentOut, inJunction, Direction.DEPOT_OUT);
     }
 
     // Form a northern loop connecting the two platforms of a station
@@ -100,15 +110,19 @@ public abstract class Track extends Infrastructure {
         endJunction.setEnd(true);
 
         Segment loopSegmentNB = new Segment(station.getTrainSystem(), northEndSegmentLength);
+
+        loopSegmentNB.setDirection(Direction.NORTHBOUND);
         loopSegmentNB.setName(Segment.SegmentIdentifier.LOOP + Segment.SegmentIdentifier.DELIMITER
                 + Segment.SegmentIdentifier.LOOP_OUT + " " + station.getName());
 
         Segment loopSegmentSB = new Segment(station.getTrainSystem(), northEndSegmentLength);
+
+        loopSegmentSB.setDirection(Direction.SOUTHBOUND);
         loopSegmentSB.setName(Segment.SegmentIdentifier.LOOP + Segment.SegmentIdentifier.DELIMITER
                 + Segment.SegmentIdentifier.LOOP_IN + " " + station.getName());
 
-        connect(outgoingNB, loopSegmentNB, endJunction);
-        connect(endJunction, loopSegmentSB, incomingSB);
+        connect(outgoingNB, loopSegmentNB, endJunction, Direction.NORTHBOUND);
+        connect(endJunction, loopSegmentSB, incomingSB, Direction.SOUTHBOUND);
     }
 
     // Form a southern loop connecting the two platforms of a station
@@ -120,20 +134,26 @@ public abstract class Track extends Infrastructure {
         endJunction.setEnd(true);
 
         Segment loopSegmentSB = new Segment(station.getTrainSystem(), southEndSegmentLength);
+
+        loopSegmentSB.setDirection(Direction.SOUTHBOUND);
         loopSegmentSB.setName(Segment.SegmentIdentifier.LOOP + Segment.SegmentIdentifier.DELIMITER
                 + Segment.SegmentIdentifier.LOOP_OUT + " " + station.getName());
 
         Segment loopSegmentNB = new Segment(station.getTrainSystem(), southEndSegmentLength);
+
+        loopSegmentNB.setDirection(Direction.NORTHBOUND);
         loopSegmentNB.setName(Segment.SegmentIdentifier.LOOP + Segment.SegmentIdentifier.DELIMITER
                 + Segment.SegmentIdentifier.LOOP_IN + " " + station.getName());
 
-        connect(outgoingSB, loopSegmentSB, endJunction);
-        connect(endJunction, loopSegmentNB, incomingNB);
+        connect(outgoingSB, loopSegmentSB, endJunction, Direction.SOUTHBOUND);
+        connect(endJunction, loopSegmentNB, incomingNB, Direction.NORTHBOUND);
     }
 
     // Connect two junctions with a segment
-    private static void connect(Junction previousJunction, Segment segment, Junction nextJunction) {
+    private static void connect(Junction previousJunction, Segment segment, Junction nextJunction,
+                                Direction direction) {
         previousJunction.getOutSegments().add(segment);
+//        previousJunction.insertOutSegment(direction, segment);
 
         segment.setFrom(previousJunction);
         segment.setTo(nextJunction);
@@ -142,6 +162,9 @@ public abstract class Track extends Infrastructure {
     // Enumeration constants for train directions
     public enum Direction {
         NORTHBOUND,
-        SOUTHBOUND
+        SOUTHBOUND,
+        DEPOT_IN,
+        DEPOT_OUT,
+        BRANCH
     }
 }

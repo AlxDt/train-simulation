@@ -69,7 +69,10 @@ public class TrainMovement {
     private double accelerationFactor;
 
     // Denotes the train's last visited station
-    private Station previousStation;
+    private Station previousStoppedStation;
+
+    // Denotes the train's last passed station
+    private Station previousPassedStation;
 
     // Denotes whether the train has recently waited at the end
     private boolean waitedAtEnd;
@@ -79,6 +82,11 @@ public class TrainMovement {
 
     // Denotes whether the train is active or not (if it isn't, it should be going back to the depot)
     private volatile boolean isActive;
+
+//    // Denotes the train's next station
+//    private Station nextStation;
+//
+//    // Denotes the
 
     public TrainMovement(final double maxVelocity, final double deceleration, final Train train) {
         // TODO: Make editable (remove from database)
@@ -93,7 +101,9 @@ public class TrainMovement {
         this.endWaitingTime = waitingTime * endWaitingTimeFactor;
         this.maxVelocity = maxVelocity;
         this.accelerationFactor = 0.0;
-        this.previousStation = null;
+
+        this.previousStoppedStation = null;
+        this.previousPassedStation = null;
 
         this.waitedAtEnd = false;
         this.disembarkedWhenRemoved = false;
@@ -155,12 +165,12 @@ public class TrainMovement {
         return train;
     }
 
-    public Station getPreviousStation() {
-        return previousStation;
+    public Station getPreviousStoppedStation() {
+        return previousStoppedStation;
     }
 
-    public void setPreviousStation(Station previousStation) {
-        this.previousStation = previousStation;
+    public void setPreviousStoppedStation(Station previousStoppedStation) {
+        this.previousStoppedStation = previousStoppedStation;
     }
 
     public boolean isWaitedAtEnd() {
@@ -226,7 +236,8 @@ public class TrainMovement {
 
             // If the action was to stop because of a train ahead, just draw this train's position and stop
             GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
-                    MainScreenController.getActiveSimulationContext().getTrainSystem(), false);
+                    MainScreenController.getActiveSimulationContext().getTrainSystem(),
+                    MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
 
             // Signal to all trains waiting to process their movement that they may now proceed to do so
             TrainMovement.MOVEMENT_LOCK.release();
@@ -243,7 +254,8 @@ public class TrainMovement {
 
                 // Request a draw
                 GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
-                        MainScreenController.getActiveSimulationContext().getTrainSystem(), false);
+                        MainScreenController.getActiveSimulationContext().getTrainSystem(),
+                        MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
 
                 // Signal to all trains waiting to process their movement that they may now proceed to do so
                 TrainMovement.MOVEMENT_LOCK.release();
@@ -262,48 +274,75 @@ public class TrainMovement {
             //     - If the train has not yet disembarked its passengers, stop at this station
             //     - Else, keep going, the passengers have already been disembarked
             if (this.isActive
-                    || (!this.isActive && this.previousStation != currentStation && !this.disembarkedWhenRemoved)) {
+                    || (!this.isActive
+                    && this.previousPassedStation != currentStation
+                    && !this.disembarkedWhenRemoved)) {
                 // If the train is to be inactive, this will be the train's final stop before returning to the depot
                 if (!this.isActive) {
                     this.disembarkedWhenRemoved = true;
                 }
 
-                // Check if the train has already stopped for this station, in which case, it doesn't need to stop
-                // anymore
-                // However, when a train changes direction, its previous station will be the same as its next station,
-                // so take that into account
-                if (this.waitedAtEnd || this.previousStation != currentStation) {
-                    // Stop the train
-                    this.velocity = 0.0;
+                // If the train is active, stop at this station if it is in its stops
+                // If the train is inactive, always stop at this station
+                if (this.stationStops.contains(currentStation) || !this.isActive) {
+                    // Check if the train has already stopped for this station, in which case, it doesn't need to stop
+                    // anymore
+                    // However, when a train changes direction, its previous station will be the same as its next
+                    // station, so take that into account
+                    if (this.waitedAtEnd || this.previousStoppedStation != currentStation) {
+                        // Stop the train
+                        this.velocity = 0.0;
 
-                    // This station has now begun stopped in this station, so this station will now be considered a previous
-                    // one
-                    this.previousStation = currentStation;
+                        // If it hasn't been noted yet, the train has now passed the first station from the depot
+                        if (this.previousPassedStation == null) {
+                            // Tell the GUI to enable the add train button again
+                            MainScreenController.ARM_ADD_TRAIN_BUTTON.release();
+                        }
 
-                    // Since the train is in a station, we may now reset the waited at end variable
-                    this.waitedAtEnd = false;
+                        // The train has now passed this station
+                        this.previousPassedStation = currentStation;
 
-                    // Request a draw
-                    GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
-                            MainScreenController.getActiveSimulationContext().getTrainSystem(), false);
+                        // This train has now also stopped in this station, so this station will now be considered a
+                        // previous one
+                        this.previousStoppedStation = currentStation;
 
-                    // Signal to all trains waiting to process their movement that they may now proceed to do so
-                    TrainMovement.MOVEMENT_LOCK.release();
+                        // Since the train is in a station, we may now reset the waited at end variable
+                        this.waitedAtEnd = false;
 
-                    return TrainAction.STATION_STOP;
+                        // Request a draw
+                        GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+                                MainScreenController.getActiveSimulationContext().getTrainSystem(),
+                                MainScreenController.getActiveSimulationContext().getScaleDownFactor(),
+                                false);
+
+                        // Signal to all trains waiting to process their movement that they may now proceed to do so
+                        TrainMovement.MOVEMENT_LOCK.release();
+
+                        return TrainAction.STATION_STOP;
+                    }
                 }
             } else {
                 if (!this.isActive) {
                     this.disembarkedWhenRemoved = true;
                 }
             }
+
+            // If it hasn't been noted yet, the train has now passed the first station from the depot
+            if (this.previousPassedStation == null) {
+                // Tell the GUI to enable the add train button again
+                MainScreenController.ARM_ADD_TRAIN_BUTTON.release();
+            }
+
+            // The train has now passed this station
+            this.previousPassedStation = currentStation;
         } else if (actionTaken == TrainAction.SIGNAL_STOP) {
             // Stop the train
             this.velocity = 0.0;
 
             // If the action was to stop because of a train ahead, just draw this train's position and stop
             GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
-                    MainScreenController.getActiveSimulationContext().getTrainSystem(), false);
+                    MainScreenController.getActiveSimulationContext().getTrainSystem(),
+                    MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
 
             // Signal to all trains waiting to process their movement that they may now proceed to do so
             TrainMovement.MOVEMENT_LOCK.release();
@@ -410,7 +449,8 @@ public class TrainMovement {
 
         // Request a draw
         GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
-                MainScreenController.getActiveSimulationContext().getTrainSystem(), false);
+                MainScreenController.getActiveSimulationContext().getTrainSystem(),
+                MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
 
         // Signal to all trains waiting to process their movement that they may now proceed to do so
         TrainMovement.MOVEMENT_LOCK.release();
@@ -496,17 +536,12 @@ public class TrainMovement {
         if (currentDepot != null) {
             return TrainAction.DEPOT_STOP;
         } else if (currentStation != null) {
-            if (this.stationStops.contains(currentStation)) {
-                // If the would-be clearance would miss the station, it is time to stop
-                if (nextClearance > currentSegment.getLength()) {
-                    return TrainAction.STATION_STOP;
+            // If the would-be clearance would miss the station, it is time to stop
+            if (nextClearance > currentSegment.getLength()) {
+                return TrainAction.STATION_STOP;
 //                } else if (futureClearance > currentSegment.getLength()) {
 //                    // If the would-be clearance would miss the station a few seconds from now, it is time to slow down
 //                    return TrainAction.SLOW_DOWN;
-                } else {
-                    // Otherwise, proceed
-                    return TrainAction.PROCEED;
-                }
             } else {
                 // Otherwise, proceed
                 return TrainAction.PROCEED;
@@ -783,6 +818,7 @@ public class TrainMovement {
 //
 ////        return stoppingDistance;
 //    }
+
 
     // Represents the possible actions for the train
     public enum TrainAction {

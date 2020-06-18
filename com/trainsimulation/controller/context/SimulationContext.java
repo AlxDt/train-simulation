@@ -8,10 +8,12 @@ import javafx.scene.layout.StackPane;
 public class SimulationContext {
     private final Tab simulationWindow;
     private final TrainSystem trainSystem;
+    private final double scaleDownFactor;
 
-    public SimulationContext(Tab simulationWindow, TrainSystem trainSystem) {
+    public SimulationContext(Tab simulationWindow, TrainSystem trainSystem, double scaleDownFactor) {
         this.simulationWindow = simulationWindow;
         this.trainSystem = trainSystem;
+        this.scaleDownFactor = scaleDownFactor;
     }
 
     public StackPane getCanvases() {
@@ -28,5 +30,9 @@ public class SimulationContext {
 
     public TrainSystem getTrainSystem() {
         return trainSystem;
+    }
+
+    public double getScaleDownFactor() {
+        return scaleDownFactor;
     }
 }

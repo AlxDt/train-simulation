@@ -13,7 +13,7 @@ public class PlatformHub extends Track {
     // Allows a segment to come out of the platform
     private final Junction outConnector;
 
-    public PlatformHub(TrainSystem trainSystem, final int platformSegmentLength) {
+    public PlatformHub(TrainSystem trainSystem, final int platformSegmentLength, final Direction direction) {
         super(trainSystem);
 
         this.inConnector = new Junction(trainSystem);
@@ -21,7 +21,7 @@ public class PlatformHub extends Track {
         this.platformSegment = new Segment(trainSystem, platformSegmentLength);
 
         // Connect the segments of the platform hub
-        Track.setPlatformHub(inConnector, platformSegment, outConnector);
+        Track.setPlatformHub(inConnector, platformSegment, outConnector, direction);
     }
 
     public Junction getInConnector() {

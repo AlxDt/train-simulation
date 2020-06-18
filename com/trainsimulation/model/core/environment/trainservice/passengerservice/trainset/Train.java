@@ -114,9 +114,6 @@ public class Train extends TrainSet implements Agent {
             // Take note of the actions made
             TrainMovement.TrainAction trainAction;
 
-            // Keep track of whether the train has entered its first station from the depot
-            boolean hasEnteredStationFromDepot = false;
-
             // Exit the depot, then keep moving until the simulation is done
             // TODO: Trains should also go home when told to, or when it's past operating hours
             while (!Simulator.getDone().get()) {
@@ -145,14 +142,6 @@ public class Train extends TrainSet implements Agent {
 
                         break;
                     case STATION_STOP:
-                        // If it hasn't been noted yet, the train has now entered its first station from the depot
-                        if (!hasEnteredStationFromDepot) {
-                            hasEnteredStationFromDepot = true;
-
-                            // Tell the GUI to enable the add train button again
-                            MainScreenController.ARM_ADD_TRAIN_BUTTON.release();
-                        }
-
                         // Wait in the station for the specified amount of time
                         while (this.trainMovement.waitAtStation() && !Simulator.getDone().get()) {
                             // If the train has been deactivated while waiting at a station, this will serve as the
@@ -172,8 +161,7 @@ public class Train extends TrainSet implements Agent {
                 // Finally, check if the train has reached the home depot
                 // If it has, then the train is now ready to despawn
                 if (!this.getTrainMovement().isActive() && trainAction == TrainMovement.TrainAction.DEPOT_STOP) {
-                    this.pullOut(MainScreenController.getActiveSimulationContext().getTrainSystem().getActiveTrains(),
-                            MainScreenController.getActiveSimulationContext().getTrainSystem().getInactiveTrains());
+                    this.pullOut(this.getTrainSystem().getActiveTrains(), this.getTrainSystem().getInactiveTrains());
 
                     break;
                 }
@@ -229,6 +217,7 @@ public class Train extends TrainSet implements Agent {
         MainScreenController.ARM_ADD_TRAIN_BUTTON.release();
 
         // Update the UI elements
-        Main.mainScreenController.requestUpdateUI(MainScreenController.getActiveSimulationContext().getTrainSystem());
+        Main.mainScreenController.requestUpdateUI(MainScreenController.getActiveSimulationContext().getTrainSystem(),
+                false);
     }
 }

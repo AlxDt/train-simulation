@@ -13,6 +13,9 @@ public class Segment extends Track {
     // Represents the trains (specifically, the train carriages) that are currently on this segment
     private final TrainQueue trainQueue;
 
+    // Represents the direction of this track
+    private Direction direction;
+
     // Represents the name of the segment
     private String name;
 
@@ -53,6 +56,14 @@ public class Segment extends Track {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Direction getDirection() {
+        return direction;
+    }
+
+    public void setDirection(Direction direction) {
+        this.direction = direction;
     }
 
     public Junction getFrom() {
@@ -116,6 +127,7 @@ public class Segment extends Track {
         public static final String DEPOT = "depot";
 
         public static final String DELIMITER = ":";
+        public static final String TO = "to";
 
         public static final String DEPOT_IN = "in";
         public static final String DEPOT_OUT = "out";

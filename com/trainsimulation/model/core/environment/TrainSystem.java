@@ -1,16 +1,13 @@
 package com.trainsimulation.model.core.environment;
 
 import com.trainsimulation.model.core.agent.passenger.Passenger;
-import com.trainsimulation.model.core.environment.infrastructure.track.Segment;
 import com.trainsimulation.model.core.environment.trainservice.maintenance.Depot;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
 import com.trainsimulation.model.utility.TrainSystemInformation;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 // Denotes a train system object containing all its information, depot, and stations
 public class TrainSystem {

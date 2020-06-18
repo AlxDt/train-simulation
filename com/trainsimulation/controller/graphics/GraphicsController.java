@@ -26,15 +26,16 @@ public class GraphicsController extends Controller {
     public static Train markedTrain = null;
 
     // Send a request to draw on the canvas
-    public static void requestDraw(StackPane canvases, TrainSystem trainSystem, boolean background) {
+    public static void requestDraw(StackPane canvases, TrainSystem trainSystem, double scaleDownFactor,
+                                   boolean background) {
         Platform.runLater(() -> {
             // Tell the JavaFX thread that we'd like to draw on the canvas
-            draw(canvases, trainSystem, background);
+            draw(canvases, trainSystem, scaleDownFactor, background);
         });
     }
 
     // Draw all that is needed in the canvas
-    private static void draw(StackPane canvases, TrainSystem trainSystem, boolean background) {
+    private static void draw(StackPane canvases, TrainSystem trainSystem, double scaleDownFactor, boolean background) {
         // Get the canvases and their graphics contexts
         final Canvas backgroundCanvas = (Canvas) canvases.getChildren().get(0);
         final Canvas foregroundCanvas = (Canvas) canvases.getChildren().get(1);
@@ -53,17 +54,14 @@ public class GraphicsController extends Controller {
 
         // TODO: Dynamically compute for the dimensions of the visualization
         // Constants for graphics drawing
-        final double initialX = CANVAS_WIDTH * 0.02;
+        final double initialX = CANVAS_WIDTH * 0.035;
         final double initialY = CANVAS_HEIGHT * 0.5;
-
-        // A factor used to scale down the real-world train line dimensions
-        final double scaleDownFactor = 0.07;
 
         // The font to be used
         final String FONT_NAME = "Segoe UI";
 
         // The font size of the text
-        final int FONT_SIZE = 10;
+        final double FONT_SIZE = 7.5;
 
         // The maximum width of the station labels
         final int STATION_LABEL_MAX_WIDTH = 80;
@@ -87,7 +85,7 @@ public class GraphicsController extends Controller {
         Color color = toColor(trainSystem.getTrainSystemInformation().getColor());
         Font font = new Font(FONT_NAME, FONT_SIZE);
 
-        Color trainColor = Color.SILVER;
+        Color trainColor = Color.rgb(170, 170, 170);
 
         backgroundGraphicsContext.setFill(color);
         backgroundGraphicsContext.setStroke(color);
@@ -114,12 +112,12 @@ public class GraphicsController extends Controller {
         double yDirection = yNorthbound;
         double directionMultiplier = 1.0;
 
+        // TODO: Don't always assume 0 indices
+        double edgeLength = station.getPlatforms().get(Track.Direction.SOUTHBOUND).getPlatformHub()
+                .getPlatformSegment().getTo().getOutSegments().get(0).getLength();
+
         if (background) {
             // Draw the incoming segment to the first station
-            // TODO: Don't always assume 0 indices
-            double edgeLength = station.getPlatforms().get(Track.Direction.SOUTHBOUND).getPlatformHub()
-                    .getPlatformSegment().getTo().getOutSegments().get(0).getLength();
-
             backgroundGraphicsContext.strokeLine(x, yDirection, x - edgeLength * scaleDownFactor, yDirection);
         }
 
@@ -144,8 +142,10 @@ public class GraphicsController extends Controller {
                             * scaleDownFactor, STATION_HEIGHT);
 
                     // Draw the station label
+                    backgroundGraphicsContext.setFill(Color.BLACK);
                     backgroundGraphicsContext.fillText(station.getName(), x, y + STATION_HEIGHT * 1.5,
                             STATION_LABEL_MAX_WIDTH);
+                    backgroundGraphicsContext.setFill(color);
                 } else {
                     // If there isn't, just draw this segment
                     backgroundGraphicsContext.strokeLine(x, yDirection, x + directionMultiplier
@@ -231,11 +231,11 @@ public class GraphicsController extends Controller {
     private static Color toColor(String color) {
         switch (color) {
             case "green":
-                return Color.GREEN;
+                return Color.rgb(1, 132, 75);
             case "blue":
-                return Color.BLUE;
+                return Color.rgb(50, 74, 156);
             case "yellow":
-                return Color.YELLOW;
+                return Color.rgb(255, 204, 0);
             default:
                 return null;
         }
