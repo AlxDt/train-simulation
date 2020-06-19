@@ -27,11 +27,6 @@ public class TrainMovement {
     // Manages the synchronization between different train movements
     private static final Semaphore MOVEMENT_LOCK = new Semaphore(1, true);
 
-    // Constants for the train's acceleration factors
-//    private final double maximumAccelerationFactor = 1.0;
-//    private final double minimumAccelerationFactor = 0.05;
-//    private final double[] accelerationFactors = {0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
-
     // Denotes the stopping time of the train at the end of the line (s)
     private final int endWaitingTime;
 
@@ -40,9 +35,6 @@ public class TrainMovement {
 
     // Denotes the train which owns this
     private final Train train;
-
-//    // Denotes the linear increment used for the train's acceleration over time
-//    private final double accelerationIncrement = 0.05;
 
     // Denotes the waiting time of the train (s)
     private final int waitingTime;
@@ -53,9 +45,6 @@ public class TrainMovement {
     // Denotes the stations which this train should stop at
     private final List<Station> stationStops;
 
-    // The index of the current acceleration factor
-    private int accelerationIndex = 0;
-
     // Denotes the train's current waited time (s)
     private int waitedTime;
 
@@ -64,9 +53,6 @@ public class TrainMovement {
 
     // Denotes the train's current velocity (km/h)
     private double velocity;
-
-    // Denotes the multiplier for the train's velocity; over time this is used to denote the train's acceleration
-    private double accelerationFactor;
 
     // Denotes the train's last visited station
     private Station previousStoppedStation;
@@ -83,24 +69,19 @@ public class TrainMovement {
     // Denotes whether the train is active or not (if it isn't, it should be going back to the depot)
     private volatile boolean isActive;
 
-//    // Denotes the train's next station
-//    private Station nextStation;
-//
-//    // Denotes the
-
     public TrainMovement(final double maxVelocity, final double deceleration, final Train train) {
-        // TODO: Make editable (remove from database)
+        // TODO: Make editable
         final int waitingTime = 30;
-        final int endWaitingTimeFactor = 6;
+        final int endWaitingTime = 300;
 
         this.deceleration = deceleration;
 
+        // TODO: Remove artificial stochasticity
         this.waitingTime = /*waitingTime*/waitingTime + (new Random().nextInt(2) * 2 - 1)
                 * new Random().nextInt((int) (0.5 * waitingTime));
 
-        this.endWaitingTime = waitingTime * endWaitingTimeFactor;
+        this.endWaitingTime = endWaitingTime;
         this.maxVelocity = maxVelocity;
-        this.accelerationFactor = 0.0;
 
         this.previousStoppedStation = null;
         this.previousPassedStation = null;
@@ -153,14 +134,6 @@ public class TrainMovement {
         this.velocity = velocity;
     }
 
-    public double getAccelerationFactor() {
-        return accelerationFactor;
-    }
-
-    public void setAccelerationFactor(double accelerationFactor) {
-        this.accelerationFactor = accelerationFactor;
-    }
-
     public Train getTrain() {
         return train;
     }
@@ -183,14 +156,6 @@ public class TrainMovement {
 
     public double getDeceleration() {
         return deceleration;
-    }
-
-    public int getAccelerationIndex() {
-        return accelerationIndex;
-    }
-
-    public void setAccelerationIndex(int accelerationIndex) {
-        this.accelerationIndex = accelerationIndex;
     }
 
     public List<Station> getStationStops() {
@@ -222,15 +187,8 @@ public class TrainMovement {
         // Lookahead distance (in m)
         TrainAction actionTaken = decideAction(HEADWAY_DISTANCE.get());
 
-        // Denotes whether the train is generally accelerating or decelerating
-        boolean increasing = true;
-
         // Take note of the appropriate action
-        if (actionTaken == TrainAction.SLOW_DOWN) {
-            // Note that the train should be decelerating
-            // That is, the acceleration should be decreasing
-            increasing = false;
-        } else if (actionTaken == TrainAction.HEADWAY_STOP) {
+        if (actionTaken == TrainAction.HEADWAY_STOP) {
             // Stop the train
             this.velocity = 0.0;
 
@@ -366,7 +324,7 @@ public class TrainMovement {
             List<TrainCarriage> trainCarriages = this.train.getTrainCarriages();
 
             // Compute for the updated velocity
-            this.updateVelocity(increasing);
+            this.updateVelocity();
 
             for (TrainCarriage trainCarriage : trainCarriages) {
                 // Get the current train carriage
@@ -738,92 +696,13 @@ public class TrainMovement {
     }
 
     // Computes the velocity of the train (km/h)
-    public void updateVelocity(boolean increasing) {
-        // Update the acceleration of the train
-//        updateAccelerationFactor(increasing);
-
-//        this.velocity = this.accelerationFactor * this.maxVelocity;
+    public void updateVelocity() {
         this.velocity = this.maxVelocity;
-//        if (increasing) {
-//            this.velocity = this.maxVelocity;
-//        } else {
-//            double currentVelocity = this.velocity;
-//            double currentVelocityMetersPerSecond = this.toMetersPerSecond(currentVelocity);
-//
-//            double result = Math.sqrt(Math.pow(currentVelocityMetersPerSecond, 2) - 2 * this.deceleration * );
-//        }
     }
-
-//    // Gets the next acceleration factor for the train
-//    private void updateAccelerationFactor(boolean increasing) {
-////        if (increasing) {
-////            if (this.accelerationIndex < this.accelerationFactors.length - 1) {
-////                this.accelerationIndex++;
-////            }
-////        } else {
-////            if (this.accelerationIndex > 0) {
-////                this.accelerationIndex--;
-////            }
-////        }
-////
-////        this.accelerationFactor = this.accelerationFactors[this.accelerationIndex];
-//
-////        if (increasing) {
-////            this.accelerationFactor += this.accelerationIncrement;
-////
-////            // Set an acceleration cap to avoid over-accelerating
-////            if (this.accelerationFactor >= this.maximumAccelerationFactor) {
-////                this.accelerationFactor = this.maximumAccelerationFactor;
-////            }
-////        } else {
-////            this.accelerationFactor -= this.accelerationIncrement;
-////
-////            // Set a deceleration cap to avoid going backwards
-////            if (this.accelerationFactor <= this.minimumAccelerationFactor) {
-////                this.accelerationFactor = this.minimumAccelerationFactor;
-////            }
-////        }
-//    }
-
-
-//    // Computes the stopping distance of the train (m)
-//    // Actual formula: x = velocity^2 / 2 * deceleration
-//    private double computeStoppingDistance() {
-//        return Math.pow(this.velocity, 2.0) / (2.0 * this.deceleration);
-////        double stoppingDistance = 0.0;
-////        double currentVelocity = this.velocity;
-////
-////        int currentAccelerationIndex = this.accelerationIndex;
-////        double currentAccelerationFactor;
-////
-////        // While the velocity isn't 0 (stopped) yet, keep decelerating until it is
-////        while (currentVelocity > 0.0) {
-////            // Get the acceleration factor
-////            currentAccelerationFactor = this.accelerationFactors[currentAccelerationIndex];
-////
-////            // Then compute the velocity
-////            currentVelocity = currentAccelerationFactor * this.maxVelocity;
-////
-////            // Then accumulate the distance covered so far
-////            stoppingDistance += toMetersPerSecond(currentVelocity);
-////
-////            // Simulate one second of deceleration
-////            if (this.accelerationIndex > 0) {
-////                currentAccelerationIndex--;
-////            }
-////        }
-//
-////        System.out.print(Math.pow(this.velocity, 2.0) / (2.0 * this.deceleration));
-////        System.out.println(" " + stoppingDistance);
-//
-////        return stoppingDistance;
-//    }
-
 
     // Represents the possible actions for the train
     public enum TrainAction {
         PROCEED, // Tell the train to move
-        SLOW_DOWN, // Tell the train to slow down
         HEADWAY_STOP, // Tell the train to stop because of a train in front of it (for headway maintenance)
         END_STOP, // Tell the train to stop because it is at the end of the line
         STATION_STOP, // Tell the train to stop because the train is in a station,
