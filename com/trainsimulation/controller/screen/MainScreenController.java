@@ -259,7 +259,7 @@ public class MainScreenController extends ScreenController {
             // active train system
             if (inactiveTrains.size() > 0) {
                 // Temporarily disable this button to prevent race conditions concerning the situations when a train has
-                // been added to a segment in the the system without the previous one not having left it yet
+                // been added to a segment in the system without the previous one having left it yet
                 addTrainButton.setDisable(true);
 
                 // Get a train from that list of inactive trains and deploy it
@@ -517,7 +517,7 @@ public class MainScreenController extends ScreenController {
     private TabPane createTabs(Scene scene, List<TrainSystem> trainSystems) {
         // TODO: Automate the generation of these constants
         // Set the scale down constants of the train system
-        final double[] scaleDownConstants = {0.07, 0.06, 0.0475};
+        final double[] scaleDownConstants = {0.0465, 0.06795, 0.05795};
 
         BorderPane borderPane = (BorderPane) scene.getRoot();
         TabPane tabPane = (TabPane) ((BorderPane) borderPane.getCenter()).getCenter();
@@ -565,7 +565,7 @@ public class MainScreenController extends ScreenController {
                     updateActiveContext(index);
 
                     // Update the UI accordingly
-                    requestUpdateUI(getActiveSimulationContext().getTrainSystem(), false);
+                    requestUpdateUI(getActiveSimulationContext().getTrainSystem(), true);
 
                     // Redraw the graphics
                     GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),

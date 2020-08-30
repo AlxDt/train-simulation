@@ -11,6 +11,7 @@ public class StationsEntity {
     private String name;
     private short sequence;
     private short distanceToPrevious;
+    private short depotSequence;
     private Collection<PlatformsEntity> platformsById;
     private TrainSystemsEntity trainSystemsByTrainSystem;
     private SchedulesEntity schedulesByOperatingHours;
@@ -56,6 +57,16 @@ public class StationsEntity {
         this.distanceToPrevious = distanceToPrevious;
     }
 
+    @Basic
+    @Column(name = "depot_sequence", nullable = false)
+    public short getDepotSequence() {
+        return depotSequence;
+    }
+
+    public void setDepotSequence(short depotSequence) {
+        this.depotSequence = depotSequence;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -64,12 +75,13 @@ public class StationsEntity {
         return id == that.id &&
                 sequence == that.sequence &&
                 distanceToPrevious == that.distanceToPrevious &&
+                depotSequence == that.depotSequence &&
                 Objects.equals(name, that.name);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, sequence, distanceToPrevious);
+        return Objects.hash(id, name, sequence, distanceToPrevious, depotSequence);
     }
 
     @OneToMany(mappedBy = "stationsByStation")

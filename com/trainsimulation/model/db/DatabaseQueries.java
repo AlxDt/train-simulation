@@ -17,7 +17,8 @@ import java.util.List;
 public class DatabaseQueries {
     private static final String GET_TRAIN_SYSTEMS
             = "" +
-            "FROM TrainSystemsEntity AS ts";
+            "FROM TrainSystemsEntity AS ts " +
+            "ORDER BY ts.name";
 
     private static final String GET_STATIONS_FROM_TRAIN_SYSTEM
             = "" +

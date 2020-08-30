@@ -8,11 +8,28 @@ import com.trainsimulation.model.simulator.SimulationTime;
 import com.trainsimulation.model.utility.Schedule;
 import com.trainsimulation.model.utility.StationCapacity;
 
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.Map;
 
 // Stations are structures in a train line where trains regularly stop to load and unload passengers
 public class Station extends StationSet {
+    // Sort by the sequence number of the station from the depot in ascending order
+    public static Comparator<Station> StationByDepotSequenceAscending = new Comparator<Station>() {
+        @Override
+        public int compare(Station o1, Station o2) {
+            return Integer.compare(o1.depotSequence, o2.depotSequence);
+        }
+    };
+
+    // Sort by the sequence number of the station from the depot in descending order
+    public static Comparator<Station> StationByDepotSequenceDescending = new Comparator<Station>() {
+        @Override
+        public int compare(Station o1, Station o2) {
+            return Integer.compare(o2.depotSequence, o1.depotSequence);
+        }
+    };
+
     // Represents the name of the station
     private final String name;
 
@@ -31,6 +48,9 @@ public class Station extends StationSet {
     // Represents this station's distance to the previous station, according to its sequence
     private final int distanceToPrevious;
 
+    // Represents this station's chronological order from the depot, according to its sequence
+    private final int depotSequence;
+
     // Represents a summarized version of this station
     private final StationProperty stationProperty;
 
@@ -43,13 +63,16 @@ public class Station extends StationSet {
         this.operatingHours = new Schedule(stationsEntity.getSchedulesByOperatingHours());
         this.capacity = new StationCapacity(stationsEntity.getStationCapacitiesByStationCapacities());
         this.distanceToPrevious = stationsEntity.getDistanceToPrevious();
+        this.depotSequence = stationsEntity.getDepotSequence();
 
         // Set the platforms up
         this.platforms = new EnumMap<>(Track.Direction.class);
-        this.platforms.put(Track.Direction.NORTHBOUND, new Platform(trainSystem, Platform.LRT_2_PLATFORM_LENGTH,
+
+        // TODO: Retrieve from the database instead of using the LRT-1 platform length for all stations
+        this.platforms.put(Track.Direction.NORTHBOUND, new Platform(trainSystem, Platform.LRT_1_PLATFORM_LENGTH,
                 Track.Direction.NORTHBOUND));
 
-        this.platforms.put(Track.Direction.SOUTHBOUND, new Platform(trainSystem, Platform.LRT_2_PLATFORM_LENGTH,
+        this.platforms.put(Track.Direction.SOUTHBOUND, new Platform(trainSystem, Platform.LRT_1_PLATFORM_LENGTH,
                 Track.Direction.SOUTHBOUND));
 
         this.stationProperty = new StationProperty(this);
@@ -81,6 +104,10 @@ public class Station extends StationSet {
 
     public StationProperty getStationProperty() {
         return stationProperty;
+    }
+
+    public int getDepotSequence() {
+        return depotSequence;
     }
 
     // Checks the time, inflow rate, current number of passengers in concourse and platform areas, and operational

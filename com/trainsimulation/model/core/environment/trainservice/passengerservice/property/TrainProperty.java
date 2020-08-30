@@ -5,10 +5,6 @@ import com.trainsimulation.model.core.environment.trainservice.passengerservice.
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.TrainCarriage;
 import com.trainsimulation.model.utility.TrainMovement;
 import javafx.beans.property.SimpleStringProperty;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-
-import java.util.List;
 
 // A summarized representation of this train class in terms of properties
 public class TrainProperty extends PassengerServiceProperty {
@@ -134,11 +130,11 @@ public class TrainProperty extends PassengerServiceProperty {
                         return "Entering system";
                     }
                 case Segment.SegmentIdentifier.LOOP:
-                    return "Going " + segmentNamedParsed[1];
+                    return "Going " + segmentNamedParsed[1] + " (" + segmentNamedParsed[2].toLowerCase() + ")";
                 case Segment.SegmentIdentifier.STATION:
-                    return "At " + segmentNamedParsed[1];
+                    return "At " + segmentNamedParsed[1] + " (" + segmentNamedParsed[2].toLowerCase() + ")";
                 case Segment.SegmentIdentifier.MAINLINE:
-                    return "From " + segmentNamedParsed[1];
+                    return "From " + segmentNamedParsed[1] + " (" + segmentNamedParsed[2].toLowerCase() + ")";
                 default:
                     // This shouldn't be reached
                     assert false : "Unknown segment identifier encountered: " + segmentNamedParsed[0];

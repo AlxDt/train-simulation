@@ -6,6 +6,8 @@ import com.trainsimulation.model.core.environment.trainservice.passengerservice.
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
 import javafx.beans.binding.Bindings;
+import javafx.beans.binding.BooleanBinding;
+import javafx.beans.binding.IntegerBinding;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -123,9 +125,15 @@ public class InsertTrainScreenController extends ScreenController {
         stationsList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
         // Prepare the bindings
+        final int minimumSelectedStationsSize = 2;
+
+        IntegerBinding selectedItemsSizeProperty = Bindings.size(stationsList.getSelectionModel().getSelectedItems());
+        BooleanBinding selectedItemsNotEnoughProperty = selectedItemsSizeProperty.lessThan(minimumSelectedStationsSize);
+
         insertTrainButton.disableProperty().bind(
-                Bindings.isEmpty(inactiveTrainsTable.getSelectionModel().getSelectedItems())
-                        .or(Bindings.isEmpty(stationsList.getSelectionModel().getSelectedItems()))
+                selectedItemsNotEnoughProperty.or(
+                        Bindings.isEmpty(inactiveTrainsTable.getSelectionModel().getSelectedItems())
+                )
         );
     }
 
@@ -143,7 +151,10 @@ public class InsertTrainScreenController extends ScreenController {
             chosenStations.add((Station) stationProperty.getOwner());
         }
 
-        selectedTrain.getTrainMovement().getStationStops().addAll(chosenStations);
+        selectedTrain.getTrainMovement().getStationQueue().setNewStations(
+                chosenStations,
+                selectedTrain.getTrainMovement().isTowardsNearEnd()
+        );
 
         // Set the return value of this controller - the train selected with its chosen stations
         this.getWindowOutput().put(OUTPUT_KEY, selectedTrain);

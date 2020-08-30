@@ -5,12 +5,11 @@ import com.trainsimulation.model.core.environment.trainservice.passengerservice.
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
 import javafx.beans.binding.Bindings;
+import javafx.beans.binding.BooleanBinding;
+import javafx.beans.binding.IntegerBinding;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
-import javafx.scene.control.SelectionMode;
+import javafx.scene.control.*;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
@@ -98,9 +97,12 @@ public class EditTrainScreenController extends ScreenController {
         stationsList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
         // Prepare the bindings
-        applyChangesButton.disableProperty().bind(
-                Bindings.isEmpty(stationsList.getSelectionModel().getSelectedItems())
-        );
+        final int minimumSelectedStationsSize = 2;
+
+        IntegerBinding selectedItemsSizeProperty = Bindings.size(stationsList.getSelectionModel().getSelectedItems());
+        BooleanBinding selectedItemsNotEnoughProperty = selectedItemsSizeProperty.lessThan(minimumSelectedStationsSize);
+
+        applyChangesButton.disableProperty().bind(selectedItemsNotEnoughProperty);
     }
 
     @FXML
@@ -116,33 +118,59 @@ public class EditTrainScreenController extends ScreenController {
             chosenStations.add((Station) stationProperty.getOwner());
         }
 
-        this.train.getTrainMovement().getStationStops().clear();
-        this.train.getTrainMovement().getStationStops().addAll(chosenStations);
+        // Check if the train is allowed to be edited at this point
+        if (this.train.getTrainMovement().isEditable()) {
+            this.train.getTrainMovement().getStationQueue().setNewStations(
+                    chosenStations,
+                    !this.train.getTrainMovement().isTowardsNearEnd()
+            );
 
-        // Set the return value of this controller - the train selected with its chosen stations
-        this.getWindowOutput().put(OUTPUT_KEY, this.train);
+            this.train.getTrainMovement().setStationListEdited(true);
 
-        // Signal that the button is be closed from the insert button
-        this.setClosedWithAction(true);
+            // Set the return value of this controller - the train selected with its chosen stations
+            this.getWindowOutput().put(OUTPUT_KEY, this.train);
 
-        // Close the window
-        stage.close();
+            // Signal that the button is be closed from the apply button
+            this.setClosedWithAction(true);
+
+            // Close the window
+            stage.close();
+        } else {
+            AlertController.showAlert(
+                    "Unable to set route",
+                    "Unable to set route",
+                    "Train routes may only be set at the ends of their routes while they are preparing to" +
+                            " switch directions.",
+                    Alert.AlertType.ERROR
+            );
+        }
     }
 
     @FXML
     public void removeTrainAction() {
         Stage stage = (Stage) removeTrainButton.getScene().getWindow();
 
-        this.train.getTrainMovement().setActive(false);
+        // Check if the train is allowed to deactivate at this point
+        if (this.train.getTrainMovement().isEditable()) {
+            this.train.getTrainMovement().setActive(false);
 
-        // Set the return value of this controller - the train deactivated
-        this.getWindowOutput().put(OUTPUT_KEY, this.train);
+            // Set the return value of this controller - the train deactivated
+            this.getWindowOutput().put(OUTPUT_KEY, this.train);
 
-        // Signal that the button is be closed from the insert button
-        this.setClosedWithAction(true);
+            // Signal that the button is be closed from the remove button
+            this.setClosedWithAction(true);
 
-        // Close the window
-        stage.close();
+            // Close the window
+            stage.close();
+        } else {
+            AlertController.showAlert(
+                    "Unable to remove train",
+                    "Unable to remove train",
+                    "Trains may only be removed at the ends of their routes while they are preparing to switch" +
+                            " directions.",
+                    Alert.AlertType.ERROR
+            );
+        }
     }
 
     @FXML

@@ -5,17 +5,18 @@ import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.infrastructure.track.Junction;
 import com.trainsimulation.model.core.environment.infrastructure.track.Segment;
 import com.trainsimulation.model.core.environment.infrastructure.track.Track;
+import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Platform;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.TrainCarriage;
 import com.trainsimulation.model.utility.TrainQueue;
-import javafx.application.Platform;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class GraphicsController extends Controller {
@@ -28,7 +29,7 @@ public class GraphicsController extends Controller {
     // Send a request to draw on the canvas
     public static void requestDraw(StackPane canvases, TrainSystem trainSystem, double scaleDownFactor,
                                    boolean background) {
-        Platform.runLater(() -> {
+        javafx.application.Platform.runLater(() -> {
             // Tell the JavaFX thread that we'd like to draw on the canvas
             draw(canvases, trainSystem, scaleDownFactor, background);
         });
@@ -54,7 +55,7 @@ public class GraphicsController extends Controller {
 
         // TODO: Dynamically compute for the dimensions of the visualization
         // Constants for graphics drawing
-        final double initialX = CANVAS_WIDTH * 0.035;
+        final double initialX = CANVAS_WIDTH * 0.02;
         final double initialY = CANVAS_HEIGHT * 0.5;
 
         // The font to be used
@@ -100,9 +101,6 @@ public class GraphicsController extends Controller {
         // Take note of the direction of drawing
         Track.Direction drawingDirection = Track.Direction.NORTHBOUND;
 
-        // Look for the first station
-        Station station = trainSystem.getStations().get(0);
-
         double x = initialX;
         double y = initialY;
 
@@ -112,17 +110,20 @@ public class GraphicsController extends Controller {
         double yDirection = yNorthbound;
         double directionMultiplier = 1.0;
 
-        // TODO: Don't always assume 0 indices
-        double edgeLength = station.getPlatforms().get(Track.Direction.SOUTHBOUND).getPlatformHub()
-                .getPlatformSegment().getTo().getOutSegments().get(0).getLength();
-
-        if (background) {
-            // Draw the incoming segment to the first station
-            backgroundGraphicsContext.strokeLine(x, yDirection, x - edgeLength * scaleDownFactor, yDirection);
-        }
-
         // Continue drawing until the train system has been drawn completely
-        Segment segment = station.getPlatforms().get(drawingDirection).getPlatformHub().getPlatformSegment();
+        // Start from the segment from the first station
+        // Look for the first station
+        final Station firstStation = trainSystem.getStations().get(0);
+        final Track.Direction oppositeDirection = Track.opposite(drawingDirection);
+        final Map<Track.Direction, Platform> platforms = firstStation.getPlatforms();
+        final Junction stationOutJunction = platforms.get(oppositeDirection).getPlatformHub().getPlatformSegment()
+                .getTo();
+        final Junction end = stationOutJunction.getOutSegment(oppositeDirection).getTo();
+
+        Segment segment = end.getOutSegment(drawingDirection);
+
+        // Then take note of the station at the current segment
+        Station station = segment.getStation();
 
         // Take note of the trains in a segment
         TrainQueue trainQueue;
@@ -159,15 +160,22 @@ public class GraphicsController extends Controller {
                     // TODO: Establish train constants (e.g., train color)
                     foregroundGraphicsContext.setFill(trainColor);
 
+                    TrainCarriage trainCarriage;
+
                     for (int carriageInSegmentIndex = 0; carriageInSegmentIndex < trainQueue.getTrainQueueSize();
                          carriageInSegmentIndex++) {
-                        TrainCarriage trainCarriage = trainQueue.getTrainCarriage(carriageInSegmentIndex);
+                        trainCarriage = trainQueue.getTrainCarriage(carriageInSegmentIndex);
 
-                        foregroundGraphicsContext.fillRect(x + directionMultiplier * trainCarriage
-                                        .getTrainCarriageLocation().getSegmentClearance() * scaleDownFactor,
+                        foregroundGraphicsContext.fillRect(
+                                x + directionMultiplier
+                                        * (trainCarriage.getTrainCarriageLocation().getSegmentClearance() -
+                                        (drawingDirection == Track.Direction.NORTHBOUND ?
+                                                trainCarriage.getLength() : 0))
+                                        * scaleDownFactor,
                                 yDirection - (trainGraphicsDiameter) * 0.5,
                                 trainCarriage.getLength() * scaleDownFactor,
-                                trainGraphicsDiameter);
+                                trainGraphicsDiameter
+                        );
 
                         // If the train composed of this train carriage is supposed to be marked, draw a large circle to
                         // mark it
@@ -204,7 +212,7 @@ public class GraphicsController extends Controller {
                 foregroundGraphicsContext.setFill(color);
             }
 
-            // Check if the junction is where the lines ends
+            // Check if the junction is where the lines end
             // If it is, then change directions
             if (junction.isEnd()) {
                 // If the drawing direction was going northbound, it is now time to go south
@@ -220,7 +228,7 @@ public class GraphicsController extends Controller {
             }
 
             // Go to the next segment
-            segment = junction.getOutSegments().get(0);
+            segment = junction.getOutSegment(drawingDirection);
 
             // See whether the next segment contains a station
             station = segment.getStation();

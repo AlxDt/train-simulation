@@ -15,6 +15,7 @@ import com.trainsimulation.model.simulator.SimulationTime;
 import com.trainsimulation.model.simulator.Simulator;
 import com.trainsimulation.model.utility.TrainMovement;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -37,10 +38,10 @@ public class Train extends TrainSet implements Agent {
 
         this.trainCarriages = new LinkedList<>();
 
-        resetTrain(trainSystem);
+        resetTrain();
     }
 
-    private void resetTrain(TrainSystem trainSystem) {
+    private void resetTrain() {
         // Remove all train carriages, if any
         this.trainCarriages.clear();
 
@@ -59,7 +60,8 @@ public class Train extends TrainSet implements Agent {
             int quantity = trainCarriagesEntity.getQuantity();
 
             for (int count = 1; count <= quantity; count++) {
-                TrainCarriage trainCarriage = new TrainCarriage(trainSystem, trainCarriagesEntity, this);
+                TrainCarriage trainCarriage = new TrainCarriage(this.getTrainSystem(),
+                        trainCarriagesEntity, this);
 
                 // Add the maximum velocity and waiting times
                 if (maxVelocity == null && deceleration == null) {
@@ -108,11 +110,32 @@ public class Train extends TrainSet implements Agent {
         try {
             // Originate the train from the depot belonging to the train system where this train belongs to
             Depot depot = this.getTrainSystem().getDepot();
-            this.trainMovement.setTrainAtSegment(depot.getPlatforms().get(Track.Direction.NORTHBOUND)
-                    .getPlatformHub().getPlatformSegment(), CARRIAGE_GAP);
+            Segment outgoingDepotSegment = depot.getPlatforms().get(Track.Direction.NORTHBOUND)
+                    .getPlatformHub().getPlatformSegment();
+
+            this.trainMovement.setTrainAtSegment(outgoingDepotSegment, CARRIAGE_GAP);
 
             // Take note of the actions made
             TrainMovement.TrainAction trainAction;
+
+            // Get the segment that leads out of the depot
+            Segment outsideDepotSegment = outgoingDepotSegment.getTo().getOutSegment(Track.Direction.DEPOT_OUT);
+
+            // Then get the segment after that (the first segment of the main line after the segment that leads out of
+            // the depot)
+            // NOTE: This is only possible when the junction that the segment that leads out of the depot leads to only
+            // has one outsegment
+            Segment firstMainlineSegment = outsideDepotSegment.getTo().getOutSegments().values().iterator().next();
+
+            // Get the very first direction of the train
+            Track.Direction firstDirection = firstMainlineSegment.getDirection();
+
+            // Set the direction of this train based on the first direction
+            this.getTrainMovement().setDesiredDirection(firstDirection);
+            this.getTrainMovement().setActualDirection(firstDirection);
+
+            // Prepare the directions of the train, based on its assigned station stops and the first direction
+            this.getTrainMovement().generateDirectionsToNextStation(firstDirection);
 
             // Exit the depot, then keep moving until the simulation is done
             // TODO: Trains should also go home when told to, or when it's past operating hours
@@ -134,14 +157,54 @@ public class Train extends TrainSet implements Agent {
                 // Do the specified actions (headway and signal stops do not have any explicit actions)
                 switch (trainAction) {
                     case END_STOP:
+                        // TODO: Allow for these kind of modification windows when trains turn around in non-end
+                        //  junctions
+                        // Open the window for the train to be edited
+                        this.trainMovement.setEditable(true);
+
                         // Wait in the end for the specified amount of time
                         while (this.trainMovement.waitAtEnd() && !Simulator.getDone().get()) {
                             // Pause the thread
                             Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
                         }
 
+                        // Close the window for the train to be edited
+                        this.trainMovement.setEditable(false);
+
+                        // If the train has been deactivated at this point, scrub the previous directions and head
+                        // home to the depot instead
+                        if (!this.trainMovement.isActive()) {
+                            // Clear the stations list
+                            this.trainMovement.getStationQueue().setNewStations(
+                                    new ArrayList<>(),
+                                    !this.trainMovement.isTowardsNearEnd()
+                            );
+
+                            // Generate directions to the depot
+                            this.trainMovement.generateDirectionsToDepot();
+                        } else if (this.trainMovement.isStationListEdited()) {
+                            // Or if the train has had its station list edited at this point, re-generate the directions
+                            // list based on the new stations list
+                            this.getTrainMovement().setStationListEdited(false);
+
+                            // Generate the directions based on the new station list
+                            this.trainMovement.generateDirectionsToNextStation(
+                                    this.getTrainMovement().getDesiredDirection()
+                            );
+                        }
+
+                        // Switch directions
+                        this.trainMovement.switchDirection();
+
                         break;
                     case STATION_STOP:
+                        // Snap the train flush to its segment in the station
+                        this.trainMovement.snapToSegment(
+                                this.getHead().getTrainCarriageLocation().getSegmentLocation(),
+                                CARRIAGE_GAP,
+                                true
+                        );
+
                         // Wait in the station for the specified amount of time
                         while (this.trainMovement.waitAtStation() && !Simulator.getDone().get()) {
                             // If the train has been deactivated while waiting at a station, this will serve as the
@@ -154,6 +217,29 @@ public class Train extends TrainSet implements Agent {
                             // Pause the thread
                             Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
                         }
+
+                        // Remove this station from the station list, as the the train is already here
+                        this.trainMovement.getStationQueue().pop();
+
+                        // Before anything else, check if there are any stations left in the station queue
+                        // If there aren't any stations left, it means the train has already covered all necessary
+                        // stations, and it is time to regenerate the station queue in reverse order
+                        if (this.trainMovement.getStationQueue().isEmpty()) {
+                            // Update the station list, as it has run out
+                            this.trainMovement.getStationQueue().reverseStations(
+                                    !this.trainMovement.isTowardsNearEnd()
+                            );
+
+                            // Reverse the intended direction of the train
+                            this.getTrainMovement().setDesiredDirection(
+                                    Track.opposite(this.getTrainMovement().getDesiredDirection())
+                            );
+                        }
+
+                        // Update the directions to the next station
+                        this.trainMovement.generateDirectionsToNextStation(
+                                this.getTrainMovement().getDesiredDirection()
+                        );
 
                         break;
                 }
@@ -211,7 +297,7 @@ public class Train extends TrainSet implements Agent {
         }
 
         // Reset the train to its default settings
-        this.resetTrain(this.getTrainSystem());
+        this.resetTrain();
 
         // Enable the insert train button
         MainScreenController.ARM_ADD_TRAIN_BUTTON.release();

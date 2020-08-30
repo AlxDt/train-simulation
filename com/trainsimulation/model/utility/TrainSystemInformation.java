@@ -2,7 +2,8 @@ package com.trainsimulation.model.utility;
 
 import com.trainsimulation.model.db.entity.TrainSystemsEntity;
 import com.trainsimulation.model.simulator.SimulationTime;
-import com.trainsimulation.model.utility.Schedule;
+
+import java.util.Objects;
 
 // Used to identify which train system a simulation component is part of
 public class TrainSystemInformation {
@@ -39,5 +40,20 @@ public class TrainSystemInformation {
 
     public Schedule getSchedule() {
         return schedule;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        TrainSystemInformation that = (TrainSystemInformation) o;
+
+        return name.equals(that.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name);
     }
 }

@@ -5,6 +5,8 @@ import com.trainsimulation.model.core.environment.trainservice.maintenance.Depot
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.utility.TrainQueue;
 
+import java.util.Objects;
+
 // Segments are structures in a train line where trains move on; they connect train stations with other stations
 public class Segment extends Track {
     // Represents the length of the segment (rounded to the nearest meter)
@@ -116,6 +118,20 @@ public class Segment extends Track {
 
     public void setCurved(boolean curved) {
         this.curved = curved;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Segment segment = (Segment) o;
+        return length == segment.length &&
+                name.equals(segment.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(length, name);
     }
 
     // Denotes the string identifier of this segment

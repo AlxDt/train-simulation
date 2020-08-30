@@ -8,6 +8,7 @@ import com.trainsimulation.model.utility.TrainSystemInformation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 // Denotes a train system object containing all its information, depot, and stations
 public class TrainSystem {
@@ -73,5 +74,20 @@ public class TrainSystem {
 
     public List<Passenger> getPassengers() {
         return passengers;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        TrainSystem that = (TrainSystem) o;
+
+        return trainSystemInformation.equals(that.trainSystemInformation);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(trainSystemInformation);
     }
 }
