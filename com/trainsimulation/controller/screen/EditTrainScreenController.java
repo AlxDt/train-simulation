@@ -1,5 +1,8 @@
 package com.trainsimulation.controller.screen;
 
+import com.jfoenix.controls.JFXButton;
+import com.jfoenix.controls.JFXListCell;
+import com.jfoenix.controls.JFXListView;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.PassengerServiceProperty;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.StationProperty;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
@@ -9,7 +12,8 @@ import javafx.beans.binding.BooleanBinding;
 import javafx.beans.binding.IntegerBinding;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.SelectionMode;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
@@ -21,19 +25,19 @@ public class EditTrainScreenController extends ScreenController {
     public static final String OUTPUT_KEY = "train";
 
     @FXML
-    public ListView<StationProperty> stationsList;
+    public JFXListView<StationProperty> stationsList;
 
     @FXML
-    public Button selectAllButton;
+    public JFXButton selectAllButton;
 
     @FXML
-    public Button clearAllButton;
+    public JFXButton clearAllButton;
 
     @FXML
-    private Button applyChangesButton;
+    private JFXButton applyChangesButton;
 
     @FXML
-    private Button removeTrainButton;
+    private JFXButton removeTrainButton;
 
     @FXML
     private Text routeText;
@@ -60,8 +64,8 @@ public class EditTrainScreenController extends ScreenController {
 
         // Set their necessary content
         final String routePrompt
-                = "Select all stations which should be serviced by this train. Use the Shift and Ctrl keys to select" +
-                " multiple stations at once.";
+                = "Select at least two stations which should be serviced by this train. Use the Shift and Ctrl keys to" +
+                " select multiple stations at once.";
         routeText.setText(routePrompt);
 
         final String removePrompt
@@ -81,7 +85,7 @@ public class EditTrainScreenController extends ScreenController {
 
         stationsList.setItems(stationProperties);
 
-        stationsList.setCellFactory(param -> new ListCell<StationProperty>() {
+        stationsList.setCellFactory(param -> new JFXListCell<StationProperty>() {
             @Override
             protected void updateItem(StationProperty item, boolean empty) {
                 super.updateItem(item, empty);

@@ -2,7 +2,9 @@ package com.trainsimulation.controller.context;
 
 import com.trainsimulation.model.core.environment.TrainSystem;
 import javafx.scene.control.Tab;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 
 // Used to store the basic states of a simulation window to be presented on the screen
 public class SimulationContext {
@@ -16,12 +18,10 @@ public class SimulationContext {
         this.scaleDownFactor = scaleDownFactor;
     }
 
-    public StackPane getCanvases() {
-        return (StackPane) this.simulationWindow.getContent();
-    }
+    public StackPane getLineViewCanvases() {
+        VBox viewContainer = (VBox) ((BorderPane) this.simulationWindow.getContent()).getCenter();
 
-    public void setCanvases(StackPane canvases) {
-        ((StackPane) this.simulationWindow.getContent()).getChildren().add(canvases);
+        return (StackPane) viewContainer.getChildren().get(0);
     }
 
     public Tab getSimulationWindow() {

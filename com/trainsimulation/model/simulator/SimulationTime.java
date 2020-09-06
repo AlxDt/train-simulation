@@ -23,6 +23,11 @@ public class SimulationTime {
         this.startTime = this.time;
     }
 
+    public SimulationTime(LocalTime time) {
+        this.time = time;
+        this.startTime = this.time;
+    }
+
     public SimulationTime(int hour, int minute, int second) {
         this.time = LocalTime.of(hour, minute, second);
         this.startTime = this.time;

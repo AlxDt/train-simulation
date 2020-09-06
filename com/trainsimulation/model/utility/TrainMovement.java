@@ -276,7 +276,7 @@ public class TrainMovement {
             this.velocity = 0.0;
 
             // If the action was to stop because of a train ahead, just draw this train's position and stop
-            GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+            GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getTrainSystem(),
                     MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
 
@@ -298,7 +298,7 @@ public class TrainMovement {
                 this.hasStopped = false;
 
                 // Request a draw
-                GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+                GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                         MainScreenController.getActiveSimulationContext().getTrainSystem(),
                         MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
 
@@ -343,7 +343,7 @@ public class TrainMovement {
                         this.previousStoppedStation = currentStation;
 
                         // Request a draw
-                        GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+                        GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                                 MainScreenController.getActiveSimulationContext().getTrainSystem(),
                                 MainScreenController.getActiveSimulationContext().getScaleDownFactor(),
                                 false);
@@ -373,7 +373,7 @@ public class TrainMovement {
             this.velocity = 0.0;
 
             // If the action was to stop because of a train ahead, just draw this train's position and stop
-            GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+            GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getTrainSystem(),
                     MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
 
@@ -473,7 +473,7 @@ public class TrainMovement {
         }
 
         // Request a draw
-        GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+        GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                 MainScreenController.getActiveSimulationContext().getTrainSystem(),
                 MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
 
@@ -726,7 +726,7 @@ public class TrainMovement {
             // If the junction at the end of the current segment is the end of the line, check how far this train
             // has gone for this segment
             // If the would-be clearance would miss the junction, it is time to stop
-            if (nextClearance > currentSegment.getLength()) {
+            if (nextClearance >= currentSegment.getLength()) {
                 return TrainAction.END_STOP;
             } else {
                 // Otherwise, proceed

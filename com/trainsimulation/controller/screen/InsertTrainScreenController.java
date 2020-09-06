@@ -1,5 +1,8 @@
 package com.trainsimulation.controller.screen;
 
+import com.jfoenix.controls.JFXButton;
+import com.jfoenix.controls.JFXListCell;
+import com.jfoenix.controls.JFXListView;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.PassengerServiceProperty;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.StationProperty;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.TrainProperty;
@@ -10,7 +13,9 @@ import javafx.beans.binding.BooleanBinding;
 import javafx.beans.binding.IntegerBinding;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.SelectionMode;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
@@ -21,7 +26,7 @@ public class InsertTrainScreenController extends ScreenController {
     public static final String OUTPUT_KEY = "train";
 
     @FXML
-    public Button insertTrainButton;
+    public JFXButton insertTrainButton;
 
     @FXML
     public TableView<TrainProperty> inactiveTrainsTable;
@@ -39,35 +44,19 @@ public class InsertTrainScreenController extends ScreenController {
     public TableColumn<TrainProperty, String> totalPassengerCapacityColumn;
 
     @FXML
-    public ListView<StationProperty> stationsList;
+    public JFXListView<StationProperty> stationsList;
 
     @FXML
-    public Button selectAllButton;
+    public JFXButton selectAllButton;
 
     @FXML
-    public Button clearAllButton;
+    public JFXButton clearAllButton;
 
     // Take note of the inactive trains to be displayed
     private List<Train> trainChoices;
 
     // Take note of the stations to be displayed
     private List<Station> stationChoices;
-
-    public List<Train> getTrainChoices() {
-        return trainChoices;
-    }
-
-    public void setTrainChoices(List<Train> trainChoices) {
-        this.trainChoices = trainChoices;
-    }
-
-    public List<Station> getStationChoices() {
-        return stationChoices;
-    }
-
-    public void setStationChoices(List<Station> stationChoices) {
-        this.stationChoices = stationChoices;
-    }
 
     public void updateTrainChoices() {
         this.trainChoices = (List<Train>) this.getWindowInput().get(InsertTrainScreenController.INPUT_KEYS[0]);
@@ -109,7 +98,7 @@ public class InsertTrainScreenController extends ScreenController {
 
         stationsList.setItems(stationProperties);
 
-        stationsList.setCellFactory(param -> new ListCell<StationProperty>() {
+        stationsList.setCellFactory(param -> new JFXListCell<StationProperty>() {
             @Override
             protected void updateItem(StationProperty item, boolean empty) {
                 super.updateItem(item, empty);

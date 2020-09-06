@@ -1,82 +1,38 @@
 package com.trainsimulation.controller.screen;
 
+import com.jfoenix.controls.JFXTimePicker;
 import com.trainsimulation.controller.Main;
 import com.trainsimulation.model.simulator.SimulationTime;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.Spinner;
-import javafx.scene.control.SpinnerValueFactory;
 import javafx.stage.Stage;
+
+import java.time.LocalTime;
 
 public class SetupScreenController extends ScreenController {
     @FXML
-    private Label startHourLabel;
+    private JFXTimePicker startTimePicker;
 
     @FXML
-    private Label startMinuteLabel;
-
-    @FXML
-    private Label endHourLabel;
-
-    @FXML
-    private Label endMinuteLabel;
-
-    @FXML
-    private Spinner<Integer> startHourSpinner;
-
-    @FXML
-    private Spinner<Integer> startMinuteSpinner;
-
-    @FXML
-    private Spinner<Integer> endHourSpinner;
-
-    @FXML
-    private Spinner<Integer> endMinuteSpinner;
+    private JFXTimePicker endTimePicker;
 
     @FXML
     private Button setupButton;
 
     @FXML
     public void initialize() {
-        // Set label references
-        startHourLabel.setLabelFor(startHourSpinner);
-        startMinuteLabel.setLabelFor(startMinuteSpinner);
-
-        endHourLabel.setLabelFor(endHourSpinner);
-        endMinuteLabel.setLabelFor(endMinuteSpinner);
-
         // Set spinners
-        final int hourLimit = 23;
-        final int minuteLimit = 59;
-
         final int startHourDefault = 4;
         final int endHourDefault = 22;
 
         final int startMinuteDefault = 30;
         final int endMinuteDefault = 30;
 
-        SpinnerValueFactory<Integer> startHourSpinnerFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(
-                0, hourLimit, startHourDefault
-        );
+        startTimePicker.set24HourView(true);
+        endTimePicker.set24HourView(true);
 
-        SpinnerValueFactory<Integer> endHourSpinnerFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(
-                0, hourLimit, endHourDefault
-        );
-
-        SpinnerValueFactory<Integer> startMinuteSpinnerFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(
-                0, minuteLimit, startMinuteDefault
-        );
-
-        SpinnerValueFactory<Integer> endMinuteSpinnerFactory = new SpinnerValueFactory.IntegerSpinnerValueFactory(
-                0, minuteLimit, endMinuteDefault
-        );
-
-        startHourSpinner.setValueFactory(startHourSpinnerFactory);
-        endHourSpinner.setValueFactory(endHourSpinnerFactory);
-
-        startMinuteSpinner.setValueFactory(startMinuteSpinnerFactory);
-        endMinuteSpinner.setValueFactory(endMinuteSpinnerFactory);
+        startTimePicker.setValue(LocalTime.of(startHourDefault, startMinuteDefault));
+        endTimePicker.setValue(LocalTime.of(endHourDefault, endMinuteDefault));
     }
 
     @FXML
@@ -84,18 +40,13 @@ public class SetupScreenController extends ScreenController {
         Stage stage = (Stage) setupButton.getScene().getWindow();
 
         // Set the simulation up
-        int startHour = startHourSpinner.getValue();
-        int startMinute = startMinuteSpinner.getValue();
+        LocalTime startTime = startTimePicker.getValue();
+        LocalTime endTime = endTimePicker.getValue();
 
-        int endHour = endHourSpinner.getValue();
-        int endMinute = endMinuteSpinner.getValue();
+        SimulationTime startSimulationTime = new SimulationTime(startTime);
+        SimulationTime endSimulationTime = new SimulationTime(endTime);
 
-        final int defaultSecondValue = 0;
-
-        SimulationTime time = new SimulationTime(startHour, startMinute, defaultSecondValue);
-        SimulationTime endTime = new SimulationTime(endHour, endMinute, defaultSecondValue);
-
-        Main.simulator.setup(time, endTime);
+        Main.simulator.setup(startSimulationTime, endSimulationTime);
 
         // Signal that the button is closed from the set up button
         this.setClosedWithAction(true);

@@ -1,5 +1,9 @@
 package com.trainsimulation.controller.screen;
 
+import com.jfoenix.controls.JFXButton;
+import com.jfoenix.controls.JFXCheckBox;
+import com.jfoenix.controls.JFXSlider;
+import com.jfoenix.controls.JFXTabPane;
 import com.trainsimulation.controller.Main;
 import com.trainsimulation.controller.context.SimulationContext;
 import com.trainsimulation.controller.graphics.GraphicsController;
@@ -14,12 +18,15 @@ import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 
 import java.io.IOException;
@@ -41,34 +48,34 @@ public class MainScreenController extends ScreenController {
     private static int activeIndex = 0;
 
     @FXML
-    private Button setupButton;
+    private JFXButton setupButton;
 
     @FXML
-    private Button startButton;
+    private JFXButton startButton;
 
     @FXML
-    private Button playPauseButton;
+    private JFXButton playPauseButton;
 
     @FXML
-    private Button addTrainButton;
+    private JFXButton addTrainButton;
 
     @FXML
-    private Slider simulationSpeedSlider;
+    private JFXSlider simulationSpeedSlider;
 
     @FXML
-    private Button editTrainButton;
+    private JFXButton editTrainButton;
 
     @FXML
-    private Button markTrainButton;
+    private JFXButton markTrainButton;
 
     @FXML
-    private Button clearMarkButton;
+    private JFXButton clearMarkButton;
 
     @FXML
-    private Slider headwaySlider;
+    private JFXSlider headwaySlider;
 
     @FXML
-    private CheckBox signalCheckBox;
+    private JFXCheckBox signalCheckBox;
 
     @FXML
     private Button previousStationButton;
@@ -92,7 +99,10 @@ public class MainScreenController extends ScreenController {
     private Label headwayLabel;
 
     @FXML
-    private Text timeText;
+    private Text runningTimeText;
+
+    @FXML
+    private Text elapsedTimeText;
 
     @FXML
     private TableView<TrainProperty> activeTrainsTable;
@@ -161,12 +171,17 @@ public class MainScreenController extends ScreenController {
         LocalTime currentTime = simulationTime.getTime();
         long elapsedTime = simulationTime.getStartTime().until(currentTime, ChronoUnit.SECONDS);
 
-        String timeString = String.format("%02d", currentTime.getHour()) + ":"
-                + String.format("%02d", currentTime.getMinute()) + ":"
-                + String.format("%02d", currentTime.getSecond()) + " "
-                + "(" + elapsedTime + " s)";
+        String timeString;
 
-        timeText.setText(timeString);
+        timeString = String.format("%02d", currentTime.getHour()) + ":"
+                + String.format("%02d", currentTime.getMinute()) + ":"
+                + String.format("%02d", currentTime.getSecond());
+
+        runningTimeText.setText(timeString);
+
+        timeString = "(" + elapsedTime + " s)";
+
+        elapsedTimeText.setText(timeString);
     }
 
     @FXML
@@ -191,7 +206,7 @@ public class MainScreenController extends ScreenController {
             loadTrains(trainSystems);
 
             // For each train line, create a tab for it
-            TabPane tabPane = createTabs(setupButton.getScene(), trainSystems);
+            JFXTabPane tabPane = createTabs(setupButton.getScene(), trainSystems);
 
             // Draw the train systems onto each graphics canvas
             drawPerTab(tabPane, trainSystems);
@@ -514,13 +529,13 @@ public class MainScreenController extends ScreenController {
     }
 
     // For each train system, create a tab for it
-    private TabPane createTabs(Scene scene, List<TrainSystem> trainSystems) {
+    private JFXTabPane createTabs(Scene scene, List<TrainSystem> trainSystems) {
         // TODO: Automate the generation of these constants
         // Set the scale down constants of the train system
-        final double[] scaleDownConstants = {0.0465, 0.06795, 0.05795};
+        final double[] scaleDownConstants = {0.046, 0.0679, 0.0579};
 
         BorderPane borderPane = (BorderPane) scene.getRoot();
-        TabPane tabPane = (TabPane) ((BorderPane) borderPane.getCenter()).getCenter();
+        JFXTabPane tabPane = (JFXTabPane) ((BorderPane) borderPane.getCenter()).getCenter();
 
         // Clear the tab pane first
         tabPane.getTabs().clear();
@@ -532,20 +547,51 @@ public class MainScreenController extends ScreenController {
             TrainSystem trainSystem = trainSystems.get(trainSystemIndex);
 
             // Create the tab, then add it to the tab pane
-            // Add canvases to each tab as well
-            // This is where the visualizations will be drawn
+            // Then add the border panes to each tab
+            // Add two canvases to each pane as well
+            // These are where the visualizations will be drawn
+            // Each pane will get a sidebar for control as well
             Tab tab = new Tab(trainSystem.getTrainSystemInformation().getName());
 
-            Canvas backgroundCanvas = new Canvas(tabPane.getBoundsInParent().getWidth(), tabPane.getBoundsInParent()
-                    .getHeight());
-            Canvas foregroundCanvas = new Canvas(tabPane.getBoundsInParent().getWidth(), tabPane.getBoundsInParent()
-                    .getHeight());
+            // Add a border pane
+            BorderPane tabBorderPane = new BorderPane();
 
-            // Create a stack pane to handle the canvases
-            StackPane stackPane = new StackPane();
-            stackPane.getChildren().addAll(backgroundCanvas, foregroundCanvas);
+            // Create canvases for the line view
+            Canvas lineViewBackgroundCanvas
+                    = new Canvas(tabPane.getBoundsInParent().getWidth(),
+                    tabPane.getBoundsInParent().getHeight() * 0.25);
+            Canvas lineViewForegroundCanvas
+                    = new Canvas(tabPane.getBoundsInParent().getWidth(),
+                    tabPane.getBoundsInParent().getHeight() * 0.25);
 
-            tab.setContent(stackPane);
+            // Create a stack pane to handle the canvas
+            StackPane lineViewStackPane = new StackPane();
+            lineViewStackPane.getChildren().addAll(lineViewBackgroundCanvas, lineViewForegroundCanvas);
+
+            // Create canvases for the station view
+            Canvas stationViewBackgroundCanvas
+                    = new Canvas(tabPane.getBoundsInParent().getWidth(),
+                    tabPane.getBoundsInParent().getHeight() * 0.75);
+            Canvas stationViewForegroundCanvas
+                    = new Canvas(tabPane.getBoundsInParent().getWidth(),
+                    tabPane.getBoundsInParent().getHeight() * 0.75);
+
+            // Create a stack pane to handle the canvas
+            StackPane stationViewStackPane = new StackPane();
+            stationViewStackPane.getChildren().addAll(stationViewBackgroundCanvas, stationViewForegroundCanvas);
+
+            // Add a separator in between
+            Separator separator = new Separator(Orientation.HORIZONTAL);
+
+            // Then create a container to handle both stack panes
+            VBox viewContainer = new VBox(lineViewStackPane, separator, stationViewStackPane);
+            viewContainer.setPadding(new Insets(20.0));
+
+            // Then add the container to the center of the border pane
+            tabBorderPane.setCenter(viewContainer);
+
+            // Finally, add the border pane to the tab
+            tab.setContent(tabBorderPane);
             tabPane.getTabs().add(tab);
 
             // Update the active elements
@@ -568,7 +614,7 @@ public class MainScreenController extends ScreenController {
                     requestUpdateUI(getActiveSimulationContext().getTrainSystem(), true);
 
                     // Redraw the graphics
-                    GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getCanvases(),
+                    GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                             MainScreenController.getActiveSimulationContext().getTrainSystem(),
                             MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
                 }
@@ -578,7 +624,7 @@ public class MainScreenController extends ScreenController {
     }
 
     // Draw the train infrastructure into the canvas
-    private void drawPerTab(TabPane tabPane, List<TrainSystem> trainSystems) {
+    private void drawPerTab(JFXTabPane tabPane, List<TrainSystem> trainSystems) {
         // The number of tabs should be the same as the number of train systems
         assert tabPane.getTabs().size() == trainSystems.size() : "The number of tabs are not equal to the number of " +
                 "train systems";
@@ -588,7 +634,7 @@ public class MainScreenController extends ScreenController {
         double scaleDownFactor;
 
         for (int trainSystemIndex = 0; trainSystemIndex < tabPane.getTabs().size(); trainSystemIndex++) {
-            canvases = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getCanvases();
+            canvases = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getLineViewCanvases();
             scaleDownFactor = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getScaleDownFactor();
 
             // Draw each train system onto its respective tab

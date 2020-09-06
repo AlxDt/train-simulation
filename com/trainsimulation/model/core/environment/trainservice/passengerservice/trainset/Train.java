@@ -157,8 +157,6 @@ public class Train extends TrainSet implements Agent {
                 // Do the specified actions (headway and signal stops do not have any explicit actions)
                 switch (trainAction) {
                     case END_STOP:
-                        // TODO: Allow for these kind of modification windows when trains turn around in non-end
-                        //  junctions
                         // Open the window for the train to be edited
                         this.trainMovement.setEditable(true);
 
