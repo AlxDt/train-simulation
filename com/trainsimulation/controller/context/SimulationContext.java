@@ -3,6 +3,7 @@ package com.trainsimulation.controller.context;
 import com.trainsimulation.model.core.environment.TrainSystem;
 import javafx.scene.control.Tab;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
@@ -22,6 +23,12 @@ public class SimulationContext {
         VBox viewContainer = (VBox) ((BorderPane) this.simulationWindow.getContent()).getCenter();
 
         return (StackPane) viewContainer.getChildren().get(0);
+    }
+
+    public HBox getStationViewCanvases() {
+        VBox viewContainer = (VBox) ((BorderPane) this.simulationWindow.getContent()).getCenter();
+
+        return (HBox) viewContainer.getChildren().get(2);
     }
 
     public Tab getSimulationWindow() {

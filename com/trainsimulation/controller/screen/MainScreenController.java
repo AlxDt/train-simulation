@@ -13,6 +13,7 @@ import com.trainsimulation.model.core.environment.trainservice.passengerservice.
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
 import com.trainsimulation.model.db.DatabaseQueries;
 import com.trainsimulation.model.simulator.SimulationTime;
+import com.trainsimulation.model.simulator.Simulator;
 import com.trainsimulation.model.utility.TrainMovement;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -20,13 +21,18 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.StrokeType;
+import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 
 import java.io.IOException;
@@ -35,11 +41,15 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainScreenController extends ScreenController {
     // Used to manage how the add train button is activated with respect to when the trains have left the depot and
     // entered a station
     public static final Semaphore ARM_ADD_TRAIN_BUTTON = new Semaphore(0);
+
+    // Denotes whether the button activatable (regardless of whether the inactive trains list is empty or not)
+    private static final AtomicBoolean armAddTrainActivateable = new AtomicBoolean(true);
 
     // Used to store all the simulation states to be presented on the screen
     private static final List<SimulationContext> SIMULATION_CONTEXTS = new ArrayList<>();
@@ -277,6 +287,9 @@ public class MainScreenController extends ScreenController {
                 // been added to a segment in the system without the previous one having left it yet
                 addTrainButton.setDisable(true);
 
+                // From this point on, the add train button may not be activated in any way
+                MainScreenController.armAddTrainActivateable.set(false);
+
                 // Get a train from that list of inactive trains and deploy it
                 selectedTrain.deploy(activeTrains, inactiveTrains);
 
@@ -298,6 +311,9 @@ public class MainScreenController extends ScreenController {
                     if (inactiveTrains.size() > 0) {
                         addTrainButton.setDisable(false);
                     }
+
+                    // The add train button may now be reactivated again
+                    armAddTrainActivateable.set(true);
                 }).start();
 
                 // Update the UI
@@ -484,7 +500,12 @@ public class MainScreenController extends ScreenController {
 
             // Check whether the add train button should be disabled
             if (checkButton) {
-                addTrainButton.setDisable(activeTrainSystem.getInactiveTrains().isEmpty());
+                addTrainButton.setDisable(
+                        !Simulator.getStarted().get() || (
+                                activeTrainSystem.getInactiveTrains().isEmpty()
+                                        || !MainScreenController.armAddTrainActivateable.get()
+                        )
+                );
             }
         });
     }
@@ -556,35 +577,15 @@ public class MainScreenController extends ScreenController {
             // Add a border pane
             BorderPane tabBorderPane = new BorderPane();
 
-            // Create canvases for the line view
-            Canvas lineViewBackgroundCanvas
-                    = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                    tabPane.getBoundsInParent().getHeight() * 0.25);
-            Canvas lineViewForegroundCanvas
-                    = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                    tabPane.getBoundsInParent().getHeight() * 0.25);
-
-            // Create a stack pane to handle the canvas
-            StackPane lineViewStackPane = new StackPane();
-            lineViewStackPane.getChildren().addAll(lineViewBackgroundCanvas, lineViewForegroundCanvas);
-
-            // Create canvases for the station view
-            Canvas stationViewBackgroundCanvas
-                    = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                    tabPane.getBoundsInParent().getHeight() * 0.75);
-            Canvas stationViewForegroundCanvas
-                    = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                    tabPane.getBoundsInParent().getHeight() * 0.75);
-
-            // Create a stack pane to handle the canvas
-            StackPane stationViewStackPane = new StackPane();
-            stationViewStackPane.getChildren().addAll(stationViewBackgroundCanvas, stationViewForegroundCanvas);
+            // Create the line and station views
+            StackPane lineViewStackPane = createLineView(tabPane);
+            VBox stationViewVBox = createStationView(tabPane);
 
             // Add a separator in between
             Separator separator = new Separator(Orientation.HORIZONTAL);
 
             // Then create a container to handle both stack panes
-            VBox viewContainer = new VBox(lineViewStackPane, separator, stationViewStackPane);
+            VBox viewContainer = new VBox(lineViewStackPane, separator, stationViewVBox);
             viewContainer.setPadding(new Insets(20.0));
 
             // Then add the container to the center of the border pane
@@ -621,6 +622,70 @@ public class MainScreenController extends ScreenController {
         );
 
         return tabPane;
+    }
+
+    private VBox createStationView(JFXTabPane tabPane) {
+        // Create a button bar for the station view controls
+        JFXButton previousStationButton = new JFXButton("<");
+
+        previousStationButton.setButtonType(JFXButton.ButtonType.RAISED);
+        previousStationButton.setDisable(true);
+        previousStationButton.setRipplerFill(Color.WHITE);
+        previousStationButton.setStyle("-fx-background-color: #85756e;");
+        previousStationButton.setTextFill(Color.WHITE);
+        previousStationButton.setFont(new Font("System Bold", 12.0));
+
+        Text currentStationText = new Text("No train systems loaded");
+
+        currentStationText.setStrokeType(StrokeType.OUTSIDE);
+        currentStationText.setStrokeWidth(0.0);
+        currentStationText.setFont(new Font("System Bold", 12.0));
+
+        JFXButton nextStationButton = new JFXButton(">");
+
+        nextStationButton.setButtonType(JFXButton.ButtonType.RAISED);
+        nextStationButton.setDisable(true);
+        nextStationButton.setRipplerFill(Color.WHITE);
+        nextStationButton.setStyle("-fx-background-color: #85756e;");
+        nextStationButton.setTextFill(Color.WHITE);
+        nextStationButton.setFont(new Font("System Bold", 12.0));
+
+        HBox stationViewControls = new HBox(previousStationButton, currentStationText, nextStationButton);
+
+        stationViewControls.setAlignment(Pos.CENTER);
+        stationViewControls.setPrefHeight(50.0);
+        stationViewControls.setSpacing(20.0);
+
+        // Create canvases for the station view
+        Canvas stationViewBackgroundCanvas
+                = new Canvas(tabPane.getBoundsInParent().getWidth(),
+                tabPane.getBoundsInParent().getHeight() * 0.75);
+
+        Canvas stationViewForegroundCanvas
+                = new Canvas(tabPane.getBoundsInParent().getWidth(),
+                tabPane.getBoundsInParent().getHeight() * 0.75);
+
+        // Create a stack pane to handle the canvases
+        StackPane stationViewCanvases = new StackPane(
+                stationViewBackgroundCanvas,
+                stationViewForegroundCanvas
+        );
+
+        // Then create a vbox that handles the station controls along with the canvases
+        return new VBox(stationViewControls, stationViewCanvases);
+    }
+
+    private StackPane createLineView(JFXTabPane tabPane) {
+        // Create canvases for the line view
+        Canvas lineViewBackgroundCanvas
+                = new Canvas(tabPane.getBoundsInParent().getWidth(),
+                tabPane.getBoundsInParent().getHeight() * 0.25);
+        Canvas lineViewForegroundCanvas
+                = new Canvas(tabPane.getBoundsInParent().getWidth(),
+                tabPane.getBoundsInParent().getHeight() * 0.25);
+
+        // Create a stack pane to handle the canvases
+        return new StackPane(lineViewBackgroundCanvas, lineViewForegroundCanvas);
     }
 
     // Draw the train infrastructure into the canvas

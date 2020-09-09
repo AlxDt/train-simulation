@@ -65,10 +65,10 @@ public class GraphicsController extends Controller {
         final double FONT_SIZE = 7.5;
 
         // The maximum width of the station labels
-        final int STATION_LABEL_MAX_WIDTH = 80;
+        final int STATION_LABEL_MAX_WIDTH = 50;
 
         // The width of lines
-        final double LINE_WIDTH = 3.0;
+        final double LINE_WIDTH = 2.5;
 
         // The size of the trains
         final double trainGraphicsDiameter = LINE_WIDTH * 1.1;

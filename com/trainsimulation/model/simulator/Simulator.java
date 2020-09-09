@@ -11,6 +11,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 // The simulator has total control over the aspects of the train simulation
 public class Simulator {
+    // Denotes whether the simulation has stated yet or not
+    private static final AtomicBoolean started = new AtomicBoolean(false);
+
     // Denotes whether the simulation is done or not
     private static final AtomicBoolean done = new AtomicBoolean(false);
 
@@ -29,6 +32,10 @@ public class Simulator {
     public Simulator() throws Throwable {
         this.databaseInterface = new DatabaseInterface();
         this.trainSystems = new ArrayList<>();
+    }
+
+    public static AtomicBoolean getStarted() {
+        return Simulator.started;
     }
 
     public static AtomicBoolean getDone() {
@@ -76,6 +83,9 @@ public class Simulator {
 
     // Start the simulation and keep it running until the given ending time
     public void start() {
+        // Signal to everyone that the simulator has been started
+        Simulator.started.set(true);
+
         // Run this on a thread so it won't choke the JavaFX UI thread
         new Thread(() -> {
             // From the starting time until the ending time, increment the time of the simulation
