@@ -10,6 +10,7 @@ import com.trainsimulation.controller.graphics.GraphicsController;
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.PassengerServiceProperty;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.TrainProperty;
+import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
 import com.trainsimulation.model.db.DatabaseQueries;
 import com.trainsimulation.model.simulator.SimulationTime;
@@ -552,7 +553,8 @@ public class MainScreenController extends ScreenController {
     private JFXTabPane createTabs(Scene scene, List<TrainSystem> trainSystems) {
         // TODO: Automate the generation of these constants
         // Set the scale down constants of the train system
-        final double[] scaleDownConstants = {0.046, 0.0679, 0.0579};
+        final double[] lineScaleDownConstants = {0.046, 0.0679, 0.0579};
+        final double stationScaleDownConstant = 5.5;
 
         BorderPane borderPane = (BorderPane) scene.getRoot();
         JFXTabPane tabPane = (JFXTabPane) ((BorderPane) borderPane.getCenter()).getCenter();
@@ -575,7 +577,12 @@ public class MainScreenController extends ScreenController {
 
             // Prepare the simulation context for this tab
             SimulationContext simulationContext
-                    = new SimulationContext(tab, trainSystem, scaleDownConstants[trainSystemIndex]);
+                    = new SimulationContext(
+                    tab,
+                    trainSystem,
+                    lineScaleDownConstants[trainSystemIndex],
+                    stationScaleDownConstant
+            );
 
             // Add a border pane
             BorderPane tabBorderPane = new BorderPane();
@@ -588,6 +595,9 @@ public class MainScreenController extends ScreenController {
                     trainSystem.getTrainSystemInformation().getIdName(),
                     simulationContext
             );
+
+            stationViewVBox.setPadding(new Insets(10.0));
+            stationViewVBox.setSpacing(10.0);
 
             // Add a separator in between
             Separator separator = new Separator(Orientation.HORIZONTAL);
@@ -625,7 +635,7 @@ public class MainScreenController extends ScreenController {
                     GraphicsController.requestDrawLineView(
                             MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                             MainScreenController.getActiveSimulationContext().getTrainSystem(),
-                            MainScreenController.getActiveSimulationContext().getScaleDownFactor(),
+                            MainScreenController.getActiveSimulationContext().getLineScaleDownFactor(),
                             false
                     );
                 }
@@ -659,6 +669,14 @@ public class MainScreenController extends ScreenController {
         previousStationButton.setFont(new Font("System Bold", 12.0));
         previousStationButton.setOnAction(event -> {
             simulationContext.moveToPreviousStation();
+
+            // Redraw the station view
+            GraphicsController.requestDrawStationView(
+                    MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
+                    MainScreenController.getActiveSimulationContext().getCurrentStation(),
+                    MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
+                    false
+            );
         });
 
         Text currentStationText = new Text();
@@ -677,6 +695,14 @@ public class MainScreenController extends ScreenController {
         nextStationButton.setFont(new Font("System Bold", 12.0));
         nextStationButton.setOnAction(event -> {
             simulationContext.moveToNextStation();
+
+            // Redraw the station view
+            GraphicsController.requestDrawStationView(
+                    MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
+                    MainScreenController.getActiveSimulationContext().getCurrentStation(),
+                    MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
+                    false
+            );
         });
 
         HBox stationViewControls = new HBox(previousStationButton, currentStationText, nextStationButton);
@@ -721,17 +747,20 @@ public class MainScreenController extends ScreenController {
             drawLineViewBackground(trainSystems, trainSystemIndex);
 
             // Draw the station view background
-            drawStationViewBackground(trainSystems, trainSystemIndex);
+            drawStationViewBackground(
+                    MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getCurrentStation(),
+                    trainSystemIndex
+            );
         }
     }
 
-    // Draw the linew view background
+    // Draw the line view background
     private void drawLineViewBackground(List<TrainSystem> trainSystems, int trainSystemIndex) {
         StackPane canvases;
         double scaleDownFactor;
 
         canvases = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getLineViewCanvases();
-        scaleDownFactor = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getScaleDownFactor();
+        scaleDownFactor = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getLineScaleDownFactor();
 
         // Draw each train system line onto its respective tab
         GraphicsController.requestDrawLineView(canvases, trainSystems.get(trainSystemIndex), scaleDownFactor,
@@ -739,13 +768,15 @@ public class MainScreenController extends ScreenController {
     }
 
     // Draw the station view background
-    private void drawStationViewBackground(List<TrainSystem> trainSystems, int trainSystemIndex) {
+    private void drawStationViewBackground(Station currentStation, int trainSystemIndex) {
         StackPane canvases;
+        double scaleDownFactor;
 
         canvases = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getStationViewCanvases();
+        scaleDownFactor = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getStationScaleDownFactor();
 
         // Draw each station in the train system onto its respective tab
-        GraphicsController.requestDrawStationView(canvases, trainSystems.get(trainSystemIndex), true);
+        GraphicsController.requestDrawStationView(canvases, currentStation, scaleDownFactor, true);
     }
 
     // Update the active canvas and train systems

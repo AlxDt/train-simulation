@@ -45,7 +45,6 @@ public class EnvironmentSetup {
         return trainSystems;
     }
 
-    // TODO: Implement LRT-1 setup logic
     private static TrainSystem setupLRT1(DatabaseInterface databaseInterface,
                                          TrainSystemInformation trainSystemInformation) {
         // Create a train system object

@@ -10,7 +10,7 @@ import java.util.List;
 
 // Represents a station's platform in a single direction
 public class Platform extends StationSet {
-    // TODO: Transfer these constants to the database
+    // TODO: Transfer these constants to the database (maximum train length in train system)
     public static final int LRT_1_PLATFORM_LENGTH = 106;
     public static final int LRT_2_PLATFORM_LENGTH = 90;
     public static final int MRT_3_PLATFORM_LENGTH = 99;

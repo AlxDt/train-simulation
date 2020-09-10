@@ -278,7 +278,7 @@ public class TrainMovement {
             // If the action was to stop because of a train ahead, just draw this train's position and stop
             GraphicsController.requestDrawLineView(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getTrainSystem(),
-                    MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
+                    MainScreenController.getActiveSimulationContext().getLineScaleDownFactor(), false);
 
             // Signal to all trains waiting to process their movement that they may now proceed to do so
             TrainMovement.MOVEMENT_LOCK.release();
@@ -300,7 +300,7 @@ public class TrainMovement {
                 // Request a draw
                 GraphicsController.requestDrawLineView(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                         MainScreenController.getActiveSimulationContext().getTrainSystem(),
-                        MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
+                        MainScreenController.getActiveSimulationContext().getLineScaleDownFactor(), false);
 
                 // Signal to all trains waiting to process their movement that they may now proceed to do so
                 TrainMovement.MOVEMENT_LOCK.release();
@@ -345,7 +345,7 @@ public class TrainMovement {
                         // Request a draw
                         GraphicsController.requestDrawLineView(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                                 MainScreenController.getActiveSimulationContext().getTrainSystem(),
-                                MainScreenController.getActiveSimulationContext().getScaleDownFactor(),
+                                MainScreenController.getActiveSimulationContext().getLineScaleDownFactor(),
                                 false);
 
                         // Signal to all trains waiting to process their movement that they may now proceed to do so
@@ -375,7 +375,7 @@ public class TrainMovement {
             // If the action was to stop because of a train ahead, just draw this train's position and stop
             GraphicsController.requestDrawLineView(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getTrainSystem(),
-                    MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
+                    MainScreenController.getActiveSimulationContext().getLineScaleDownFactor(), false);
 
             // Signal to all trains waiting to process their movement that they may now proceed to do so
             TrainMovement.MOVEMENT_LOCK.release();
@@ -475,7 +475,7 @@ public class TrainMovement {
         // Request a draw
         GraphicsController.requestDrawLineView(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                 MainScreenController.getActiveSimulationContext().getTrainSystem(),
-                MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
+                MainScreenController.getActiveSimulationContext().getLineScaleDownFactor(), false);
 
         // Signal to all trains waiting to process their movement that they may now proceed to do so
         TrainMovement.MOVEMENT_LOCK.release();
@@ -910,6 +910,16 @@ public class TrainMovement {
             // Increment the offset
             carriageOffset += trainCarriage.getLength() + carriageGap;
         }
+
+        // Redraw the line view canvas
+        GraphicsController.requestDrawLineView(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
+                MainScreenController.getActiveSimulationContext().getTrainSystem(),
+                MainScreenController.getActiveSimulationContext().getLineScaleDownFactor(), false);
+
+        // TODO: Move to own loop
+        GraphicsController.requestDrawStationView(MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
+                MainScreenController.getActiveSimulationContext().getCurrentStation(),
+                MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(), false);
     }
 
     // Computes the velocity of the train (km/h)

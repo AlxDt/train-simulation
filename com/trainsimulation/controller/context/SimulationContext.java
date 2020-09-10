@@ -13,17 +13,20 @@ import javafx.scene.text.Text;
 public class SimulationContext {
     private final Tab simulationWindow;
     private final TrainSystem trainSystem;
-    private final double scaleDownFactor;
+    private final double lineScaleDownFactor;
+    private final double stationScaleDownFactor;
     public int stationIndex;
     private Station currentStation;
     private Button previousStationButton;
     private Text currentStationText;
     private Button nextStationButton;
 
-    public SimulationContext(Tab simulationWindow, TrainSystem trainSystem, double scaleDownFactor) {
+    public SimulationContext(Tab simulationWindow, TrainSystem trainSystem, double lineScaleDownFactor,
+                             double stationScaleDownFactor) {
         this.simulationWindow = simulationWindow;
         this.trainSystem = trainSystem;
-        this.scaleDownFactor = scaleDownFactor;
+        this.lineScaleDownFactor = lineScaleDownFactor;
+        this.stationScaleDownFactor = stationScaleDownFactor;
         this.stationIndex = 0;
 
         this.currentStation = this.trainSystem.getStations().get(this.stationIndex);
@@ -33,8 +36,12 @@ public class SimulationContext {
         return trainSystem;
     }
 
-    public double getScaleDownFactor() {
-        return scaleDownFactor;
+    public double getLineScaleDownFactor() {
+        return lineScaleDownFactor;
+    }
+
+    public double getStationScaleDownFactor() {
+        return stationScaleDownFactor;
     }
 
     public StackPane getLineViewCanvases() {

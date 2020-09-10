@@ -1,6 +1,7 @@
 package com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset;
 
 import com.trainsimulation.controller.Main;
+import com.trainsimulation.controller.graphics.GraphicsController;
 import com.trainsimulation.controller.screen.MainScreenController;
 import com.trainsimulation.model.core.agent.Agent;
 import com.trainsimulation.model.core.environment.TrainSystem;
@@ -145,6 +146,14 @@ public class Train extends TrainSet implements Agent {
                 do {
                     // Take note of the action command
                     trainAction = this.trainMovement.move();
+
+                    // TODO: Move to own loop
+                    // Redraw the station view
+                    GraphicsController.requestDrawStationView(
+                            MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
+                            MainScreenController.getActiveSimulationContext().getCurrentStation(),
+                            MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
+                            false);
 
                     // Update the summary
                     this.trainProperty.updateTrainProperty(this.identifier, this.trainMovement, this.trainCarriages
