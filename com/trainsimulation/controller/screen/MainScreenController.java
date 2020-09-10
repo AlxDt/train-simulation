@@ -49,7 +49,7 @@ public class MainScreenController extends ScreenController {
     public static final Semaphore ARM_ADD_TRAIN_BUTTON = new Semaphore(0);
 
     // Denotes whether the button activatable (regardless of whether the inactive trains list is empty or not)
-    private static final AtomicBoolean armAddTrainActivateable = new AtomicBoolean(true);
+    private static final AtomicBoolean armAddTrainActivatable = new AtomicBoolean(true);
 
     // Used to store all the simulation states to be presented on the screen
     private static final List<SimulationContext> SIMULATION_CONTEXTS = new ArrayList<>();
@@ -88,15 +88,6 @@ public class MainScreenController extends ScreenController {
     private JFXCheckBox signalCheckBox;
 
     @FXML
-    private Button previousStationButton;
-
-    @FXML
-    private Text currentStationText;
-
-    @FXML
-    private Button nextStationButton;
-
-    @FXML
     private Label simulationSpeedLabel;
 
     @FXML
@@ -125,6 +116,9 @@ public class MainScreenController extends ScreenController {
 
     @FXML
     private TableColumn<TrainProperty, String> trainVelocityColumn;
+
+    @FXML
+    private BorderPane simulationArea;
 
 //    @FXML
 //    private TableColumn<Train.TrainProperty, String> trainPassengersColumn;
@@ -189,7 +183,7 @@ public class MainScreenController extends ScreenController {
 
         runningTimeText.setText(timeString);
 
-        timeString = "(" + elapsedTime + " s)";
+        timeString = elapsedTime + " s";
 
         elapsedTimeText.setText(timeString);
     }
@@ -218,7 +212,7 @@ public class MainScreenController extends ScreenController {
             // For each train line, create a tab for it
             JFXTabPane tabPane = createTabs(setupButton.getScene(), trainSystems);
 
-            // Draw the train systems onto each graphics canvas
+            // Draw the train systems onto each graphics canvas, with their empty lines and stations
             drawPerTab(tabPane, trainSystems);
 
             // Position the buttons
@@ -288,7 +282,7 @@ public class MainScreenController extends ScreenController {
                 addTrainButton.setDisable(true);
 
                 // From this point on, the add train button may not be activated in any way
-                MainScreenController.armAddTrainActivateable.set(false);
+                MainScreenController.armAddTrainActivatable.set(false);
 
                 // Get a train from that list of inactive trains and deploy it
                 selectedTrain.deploy(activeTrains, inactiveTrains);
@@ -313,7 +307,7 @@ public class MainScreenController extends ScreenController {
                     }
 
                     // The add train button may now be reactivated again
-                    armAddTrainActivateable.set(true);
+                    armAddTrainActivatable.set(true);
                 }).start();
 
                 // Update the UI
@@ -407,6 +401,11 @@ public class MainScreenController extends ScreenController {
             addTrainButton.setDisable(true);
 
             activeTrainsTable.setDisable(true);
+
+            // Also enable the station view buttons
+            for (SimulationContext simulationContext : MainScreenController.SIMULATION_CONTEXTS) {
+                simulationContext.configureStationButtonsDisabled();
+            }
         });
     }
 
@@ -503,7 +502,7 @@ public class MainScreenController extends ScreenController {
                 addTrainButton.setDisable(
                         !Simulator.getStarted().get() || (
                                 activeTrainSystem.getInactiveTrains().isEmpty()
-                                        || !MainScreenController.armAddTrainActivateable.get()
+                                        || !MainScreenController.armAddTrainActivatable.get()
                         )
                 );
             }
@@ -574,12 +573,21 @@ public class MainScreenController extends ScreenController {
             // Each pane will get a sidebar for control as well
             Tab tab = new Tab(trainSystem.getTrainSystemInformation().getName());
 
+            // Prepare the simulation context for this tab
+            SimulationContext simulationContext
+                    = new SimulationContext(tab, trainSystem, scaleDownConstants[trainSystemIndex]);
+
             // Add a border pane
             BorderPane tabBorderPane = new BorderPane();
 
             // Create the line and station views
             StackPane lineViewStackPane = createLineView(tabPane);
-            VBox stationViewVBox = createStationView(tabPane);
+
+            VBox stationViewVBox = createStationView(
+                    tabPane,
+                    trainSystem.getTrainSystemInformation().getIdName(),
+                    simulationContext
+            );
 
             // Add a separator in between
             Separator separator = new Separator(Orientation.HORIZONTAL);
@@ -596,8 +604,7 @@ public class MainScreenController extends ScreenController {
             tabPane.getTabs().add(tab);
 
             // Update the active elements
-            MainScreenController.SIMULATION_CONTEXTS.add(new SimulationContext(tab, trainSystem,
-                    scaleDownConstants[trainSystemIndex]));
+            MainScreenController.SIMULATION_CONTEXTS.add(simulationContext);
 
             updateActiveContext(tabPane.getSelectionModel().getSelectedIndex());
         }
@@ -615,16 +622,32 @@ public class MainScreenController extends ScreenController {
                     requestUpdateUI(getActiveSimulationContext().getTrainSystem(), true);
 
                     // Redraw the graphics
-                    GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
+                    GraphicsController.requestDrawLineView(
+                            MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                             MainScreenController.getActiveSimulationContext().getTrainSystem(),
-                            MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
+                            MainScreenController.getActiveSimulationContext().getScaleDownFactor(),
+                            false
+                    );
                 }
         );
 
         return tabPane;
     }
 
-    private VBox createStationView(JFXTabPane tabPane) {
+    private StackPane createLineView(JFXTabPane tabPane) {
+        // Create canvases for the line view
+        Canvas lineViewBackgroundCanvas
+                = new Canvas(tabPane.getBoundsInParent().getWidth(),
+                tabPane.getBoundsInParent().getHeight() * 0.25);
+        Canvas lineViewForegroundCanvas
+                = new Canvas(tabPane.getBoundsInParent().getWidth(),
+                tabPane.getBoundsInParent().getHeight() * 0.25);
+
+        // Create a stack pane to handle the canvases
+        return new StackPane(lineViewBackgroundCanvas, lineViewForegroundCanvas);
+    }
+
+    private VBox createStationView(JFXTabPane tabPane, String trainSystemIdName, SimulationContext simulationContext) {
         // Create a button bar for the station view controls
         JFXButton previousStationButton = new JFXButton("<");
 
@@ -634,8 +657,11 @@ public class MainScreenController extends ScreenController {
         previousStationButton.setStyle("-fx-background-color: #85756e;");
         previousStationButton.setTextFill(Color.WHITE);
         previousStationButton.setFont(new Font("System Bold", 12.0));
+        previousStationButton.setOnAction(event -> {
+            simulationContext.moveToPreviousStation();
+        });
 
-        Text currentStationText = new Text("No train systems loaded");
+        Text currentStationText = new Text();
 
         currentStationText.setStrokeType(StrokeType.OUTSIDE);
         currentStationText.setStrokeWidth(0.0);
@@ -649,6 +675,9 @@ public class MainScreenController extends ScreenController {
         nextStationButton.setStyle("-fx-background-color: #85756e;");
         nextStationButton.setTextFill(Color.WHITE);
         nextStationButton.setFont(new Font("System Bold", 12.0));
+        nextStationButton.setOnAction(event -> {
+            simulationContext.moveToNextStation();
+        });
 
         HBox stationViewControls = new HBox(previousStationButton, currentStationText, nextStationButton);
 
@@ -671,21 +700,13 @@ public class MainScreenController extends ScreenController {
                 stationViewForegroundCanvas
         );
 
+        // Take note of certain controls
+        simulationContext.setPreviousStationButton(previousStationButton);
+        simulationContext.setCurrentStationText(currentStationText);
+        simulationContext.setNextStationButton(nextStationButton);
+
         // Then create a vbox that handles the station controls along with the canvases
         return new VBox(stationViewControls, stationViewCanvases);
-    }
-
-    private StackPane createLineView(JFXTabPane tabPane) {
-        // Create canvases for the line view
-        Canvas lineViewBackgroundCanvas
-                = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                tabPane.getBoundsInParent().getHeight() * 0.25);
-        Canvas lineViewForegroundCanvas
-                = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                tabPane.getBoundsInParent().getHeight() * 0.25);
-
-        // Create a stack pane to handle the canvases
-        return new StackPane(lineViewBackgroundCanvas, lineViewForegroundCanvas);
     }
 
     // Draw the train infrastructure into the canvas
@@ -695,17 +716,36 @@ public class MainScreenController extends ScreenController {
                 "train systems";
 
         // For each tab (which contains a canvas), draw its train system
+        for (int trainSystemIndex = 0; trainSystemIndex < tabPane.getTabs().size(); trainSystemIndex++) {
+            // Draw the line view background
+            drawLineViewBackground(trainSystems, trainSystemIndex);
+
+            // Draw the station view background
+            drawStationViewBackground(trainSystems, trainSystemIndex);
+        }
+    }
+
+    // Draw the linew view background
+    private void drawLineViewBackground(List<TrainSystem> trainSystems, int trainSystemIndex) {
         StackPane canvases;
         double scaleDownFactor;
 
-        for (int trainSystemIndex = 0; trainSystemIndex < tabPane.getTabs().size(); trainSystemIndex++) {
-            canvases = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getLineViewCanvases();
-            scaleDownFactor = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getScaleDownFactor();
+        canvases = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getLineViewCanvases();
+        scaleDownFactor = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getScaleDownFactor();
 
-            // Draw each train system onto its respective tab
-            GraphicsController.requestDraw(canvases, trainSystems.get(trainSystemIndex), scaleDownFactor,
-                    true);
-        }
+        // Draw each train system line onto its respective tab
+        GraphicsController.requestDrawLineView(canvases, trainSystems.get(trainSystemIndex), scaleDownFactor,
+                true);
+    }
+
+    // Draw the station view background
+    private void drawStationViewBackground(List<TrainSystem> trainSystems, int trainSystemIndex) {
+        StackPane canvases;
+
+        canvases = MainScreenController.SIMULATION_CONTEXTS.get(trainSystemIndex).getStationViewCanvases();
+
+        // Draw each station in the train system onto its respective tab
+        GraphicsController.requestDrawStationView(canvases, trainSystems.get(trainSystemIndex), true);
     }
 
     // Update the active canvas and train systems

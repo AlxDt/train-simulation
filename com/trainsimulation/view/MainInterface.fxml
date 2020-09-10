@@ -10,17 +10,19 @@
             xmlns="http://javafx.com/javafx/8.0.171"
             fx:controller="com.trainsimulation.controller.screen.MainScreenController">
    <center>
-      <BorderPane prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+      <BorderPane fx:id="simulationArea" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
          <right>
             <VBox alignment="CENTER" prefHeight="415.0" prefWidth="300.0" spacing="5.0"
                   style="-fx-background-color: #00bcd4;" BorderPane.alignment="CENTER">
                <children>
-                  <Text fx:id="trainSystemText" strokeType="OUTSIDE" strokeWidth="0.0" text="No train systems loaded">
+                  <Text fx:id="trainSystemText" fill="WHITE" strokeType="OUTSIDE" strokeWidth="0.0"
+                        text="No train systems loaded">
                      <font>
                         <Font name="System Bold" size="24.0"/>
                      </font>
                   </Text>
-                  <Text fx:id="trainsDeployedText" strokeType="OUTSIDE" strokeWidth="0.0" text="0 / 0 trains deployed"/>
+                  <Text fx:id="trainsDeployedText" fill="WHITE" strokeType="OUTSIDE" strokeWidth="0.0"
+                        text="0 / 0 trains deployed"/>
                   <HBox alignment="CENTER" prefHeight="40.0" prefWidth="280.0">
                      <children>
                         <JFXButton fx:id="addTrainButton" buttonType="RAISED" disable="true" onAction="#addTrainAction"
@@ -74,7 +76,7 @@
                      <children>
                         <HBox alignment="CENTER" prefHeight="40.0" prefWidth="284.0" spacing="20.0">
                            <children>
-                              <Label fx:id="headwayLabel" disable="true" text="Headway (meters)"/>
+                              <Label fx:id="headwayLabel" disable="true" text="Headway (meters)" textFill="WHITE"/>
                               <JFXSlider fx:id="headwaySlider" blockIncrement="25.0" max="1000.0" min="100.0"
                                          snapToTicks="true" value="550.0"/>
                            </children>
@@ -83,7 +85,7 @@
                   </HBox>
                   <HBox alignment="CENTER" prefHeight="40.0" prefWidth="284.0" spacing="20.0">
                      <children>
-                        <JFXCheckBox fx:id="signalCheckBox" text="Show signals"/>
+                        <JFXCheckBox fx:id="signalCheckBox" text="Show signals" textFill="WHITE"/>
                      </children>
                   </HBox>
                </children>

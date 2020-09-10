@@ -26,17 +26,26 @@ public class GraphicsController extends Controller {
     // Denotes the train to mark, if any
     public static Train markedTrain = null;
 
-    // Send a request to draw on the canvas
-    public static void requestDraw(StackPane canvases, TrainSystem trainSystem, double scaleDownFactor,
-                                   boolean background) {
+    // Send a request to draw the line view on the canvas
+    public static void requestDrawLineView(StackPane canvases, TrainSystem trainSystem, double scaleDownFactor,
+                                           boolean background) {
         javafx.application.Platform.runLater(() -> {
             // Tell the JavaFX thread that we'd like to draw on the canvas
-            draw(canvases, trainSystem, scaleDownFactor, background);
+            drawLineView(canvases, trainSystem, scaleDownFactor, background);
         });
     }
 
-    // Draw all that is needed in the canvas
-    private static void draw(StackPane canvases, TrainSystem trainSystem, double scaleDownFactor, boolean background) {
+    // Send a request to draw the station view on the canvas
+    public static void requestDrawStationView(StackPane canvases, TrainSystem trainSystem, boolean background) {
+        javafx.application.Platform.runLater(() -> {
+            // Tell the JavaFX thread that we'd like to draw on the canvas
+            drawStationView(canvases, trainSystem, background);
+        });
+    }
+
+    // Draw all that is needed in the line view on the canvas
+    private static void drawLineView(StackPane canvases, TrainSystem trainSystem, double scaleDownFactor,
+                                     boolean background) {
         // Get the canvases and their graphics contexts
         final Canvas backgroundCanvas = (Canvas) canvases.getChildren().get(0);
         final Canvas foregroundCanvas = (Canvas) canvases.getChildren().get(1);
@@ -233,6 +242,12 @@ public class GraphicsController extends Controller {
             // See whether the next segment contains a station
             station = segment.getStation();
         }
+    }
+
+    // Draw all that is needed in the station view on the canvas
+    private static void drawStationView(StackPane canvases, TrainSystem trainSystem, boolean background) {
+        ((Canvas) canvases.getChildren().get(0)).getGraphicsContext2D().setFill(toColor(trainSystem.getTrainSystemInformation().getColor()));
+        ((Canvas) canvases.getChildren().get(0)).getGraphicsContext2D().fillRect(200, 200, 10, 10);
     }
 
     // Convert string colors to paint objects usable by the graphics library

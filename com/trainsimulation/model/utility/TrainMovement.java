@@ -276,7 +276,7 @@ public class TrainMovement {
             this.velocity = 0.0;
 
             // If the action was to stop because of a train ahead, just draw this train's position and stop
-            GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
+            GraphicsController.requestDrawLineView(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getTrainSystem(),
                     MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
 
@@ -298,7 +298,7 @@ public class TrainMovement {
                 this.hasStopped = false;
 
                 // Request a draw
-                GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
+                GraphicsController.requestDrawLineView(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                         MainScreenController.getActiveSimulationContext().getTrainSystem(),
                         MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
 
@@ -343,7 +343,7 @@ public class TrainMovement {
                         this.previousStoppedStation = currentStation;
 
                         // Request a draw
-                        GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
+                        GraphicsController.requestDrawLineView(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                                 MainScreenController.getActiveSimulationContext().getTrainSystem(),
                                 MainScreenController.getActiveSimulationContext().getScaleDownFactor(),
                                 false);
@@ -373,7 +373,7 @@ public class TrainMovement {
             this.velocity = 0.0;
 
             // If the action was to stop because of a train ahead, just draw this train's position and stop
-            GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
+            GraphicsController.requestDrawLineView(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getTrainSystem(),
                     MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
 
@@ -473,7 +473,7 @@ public class TrainMovement {
         }
 
         // Request a draw
-        GraphicsController.requestDraw(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
+        GraphicsController.requestDrawLineView(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                 MainScreenController.getActiveSimulationContext().getTrainSystem(),
                 MainScreenController.getActiveSimulationContext().getScaleDownFactor(), false);
 

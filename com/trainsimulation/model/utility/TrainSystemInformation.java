@@ -10,6 +10,9 @@ public class TrainSystemInformation {
     // Denotes the name of the train system
     private final String name;
 
+    // Denotes the id version of the name of the train system
+    private final String idName;
+
     // Denotes the assigned color of the train system (for visualization purposes)
     private final String color;
 
@@ -18,6 +21,7 @@ public class TrainSystemInformation {
 
     public TrainSystemInformation(String trainSystem, String color, SimulationTime startTime, SimulationTime endTime) {
         this.name = trainSystem;
+        this.idName = this.name.replace("\\-", "").toLowerCase();
         this.color = color;
 
         this.schedule = new Schedule(startTime, endTime);
@@ -25,6 +29,7 @@ public class TrainSystemInformation {
 
     public TrainSystemInformation(TrainSystemsEntity trainSystemsEntity) {
         this.name = trainSystemsEntity.getName();
+        this.idName = this.name.replace("\\-", "").toLowerCase();
         this.color = trainSystemsEntity.getColor();
 
         this.schedule = new Schedule(trainSystemsEntity.getSchedulesBySchedule());
@@ -32,6 +37,10 @@ public class TrainSystemInformation {
 
     public String getName() {
         return name;
+    }
+
+    public String getIdName() {
+        return idName;
     }
 
     public String getColor() {
