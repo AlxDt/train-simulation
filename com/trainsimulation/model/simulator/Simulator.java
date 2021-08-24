@@ -7,15 +7,19 @@ import com.trainsimulation.model.simulator.setup.EnvironmentSetup;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 // The simulator has total control over the aspects of the train simulation
 public class Simulator {
-    // Denotes whether the simulation has stated yet or not
-    private static final AtomicBoolean started = new AtomicBoolean(false);
+    // Denotes whether the simulation has started yet or not
+    private final AtomicBoolean running = new AtomicBoolean(false);
+
+    // The lock which manages each simulation tick
+    public static final Object tickLock = new Object();
 
     // Denotes whether the simulation is done or not
-    private static final AtomicBoolean done = new AtomicBoolean(false);
+    private final AtomicBoolean done = new AtomicBoolean(false);
 
     // Contains the database interfacing methods of the simulator
     private final DatabaseInterface databaseInterface;
@@ -29,17 +33,25 @@ public class Simulator {
     // Stores the time when the simulation will end
     private SimulationTime endTime;
 
+    // Used to manage when the simulation is paused/played
+    private final Semaphore playSemaphore;
+
     public Simulator() throws Throwable {
         this.databaseInterface = new DatabaseInterface();
         this.trainSystems = new ArrayList<>();
+
+        this.playSemaphore = new Semaphore(0);
+
+        // Start the simulation thread, but in reality it would be activated much later
+        this.start();
     }
 
-    public static AtomicBoolean getStarted() {
-        return Simulator.started;
+    public AtomicBoolean getRunning() {
+        return this.running;
     }
 
-    public static AtomicBoolean getDone() {
-        return Simulator.done;
+    public AtomicBoolean getDone() {
+        return this.done;
     }
 
     public DatabaseInterface getDatabaseInterface() {
@@ -66,6 +78,10 @@ public class Simulator {
         this.endTime = endTime;
     }
 
+    public Semaphore getPlaySemaphore() {
+        return playSemaphore;
+    }
+
     // Set the simulation up with all its environments, agents, and attributes
     public void setup(SimulationTime startTime, SimulationTime endTime) {
         // Prepare the time at the start of the simulation
@@ -83,34 +99,79 @@ public class Simulator {
 
     // Start the simulation and keep it running until the given ending time
     public void start() {
-        // Signal to everyone that the simulator has been started
-        Simulator.started.set(true);
-
-        // Run this on a thread so it won't choke the JavaFX UI thread
         new Thread(() -> {
-            // From the starting time until the ending time, increment the time of the simulation
-            while (this.time.isTimeBeforeOrDuring(this.endTime)) {
-                // Redraw the updated time
-                Main.mainScreenController.requestUpdateSimulationTime(this.time);
-
-                // Pause this simulation thread for a brief amount of time so it could be followed at a pace conducive
-                // to visualization
+            while (true) {
                 try {
-                    Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    // Wait until the play button has been pressed
+                    playSemaphore.acquire();
+
+                    // Update the pertinent variables when ticking
+                    boolean isTimeBeforeOrDuring = this.time.isTimeBeforeOrDuring(this.endTime);
+
+                    // Keep looping until paused
+                    while (this.running.get() && isTimeBeforeOrDuring) {
+                        // Redraw the updated time
+                        Main.mainScreenController.requestUpdateSimulationTime(this.time);
+
+                        // Pause this simulation thread for a brief amount of time so it could be followed at a pace
+                        // conducive to visualization
+
+                        // Increment (tick) the clock
+                        this.time.tick();
+
+                        isTimeBeforeOrDuring = this.time.isTimeBeforeOrDuring(this.endTime);
+                        Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
+
+                        synchronized (Simulator.tickLock) {
+                            Simulator.tickLock.notifyAll();
+                        }
+                    }
+
+                    if (!isTimeBeforeOrDuring) {
+                        // Once the simulation time stops, stop all the threads
+                        Main.simulator.getDone().set(true);
+
+                        // Then tell the UI thread to disable all buttons
+                        Main.mainScreenController.requestDisableButtons();
+
+                        break;
+                    }
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
                 }
-
-                // Increment (tick) the clock
-                this.time.tick();
             }
-
-            // Once the simulation time stops, stop all the threads
-            Simulator.done.set(true);
-
-            // Then tell the UI thread to disable all buttons
-            Main.mainScreenController.requestDisableButtons();
         }).start();
+
+        //////////////
+
+//        // Signal to everyone that the simulator has been started
+//        this.started.set(true);
+//
+//        // Run this on a thread so it won't choke the JavaFX UI thread
+//        new Thread(() -> {
+//            // From the starting time until the ending time, increment the time of the simulation
+//            while (this.time.isTimeBeforeOrDuring(this.endTime)) {
+//                // Redraw the updated time
+//                Main.mainScreenController.requestUpdateSimulationTime(this.time);
+//
+//                // Pause this simulation thread for a brief amount of time so it could be followed at a pace conducive
+//                // to visualization
+//                try {
+//                    Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//
+//                // Increment (tick) the clock
+//                this.time.tick();
+//            }
+//
+//            // Once the simulation time stops, stop all the threads
+//            Main.simulator.getDone().set(true);
+//
+//            // Then tell the UI thread to disable all buttons
+//            Main.mainScreenController.requestDisableButtons();
+//        }).start();
     }
 
     // TODO: Implement simulation playing/pausing logic

@@ -140,10 +140,14 @@ public class Train extends TrainSet implements Agent {
 
             // Exit the depot, then keep moving until the simulation is done
             // TODO: Trains should also go home when told to, or when it's past operating hours
-            while (!Simulator.getDone().get()) {
+            while (!Main.simulator.getDone().get()) {
                 // Move until it is commanded otherwise (when it stops for a station or to avoid colliding with another
                 // train, or when it stops because of a signal), or until the simulation is done
                 do {
+                    synchronized (Simulator.tickLock) {
+                        Simulator.tickLock.wait();
+                    }
+
                     // Take note of the action command
                     trainAction = this.trainMovement.move();
 
@@ -160,8 +164,8 @@ public class Train extends TrainSet implements Agent {
                             .getFirst());
 
                     // Pause the thread
-                    Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
-                } while (trainAction == TrainMovement.TrainAction.PROCEED && !Simulator.getDone().get());
+//                    Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
+                } while (trainAction == TrainMovement.TrainAction.PROCEED && !Main.simulator.getDone().get());
 
                 // Do the specified actions (headway and signal stops do not have any explicit actions)
                 switch (trainAction) {
@@ -170,9 +174,13 @@ public class Train extends TrainSet implements Agent {
                         this.trainMovement.setEditable(true);
 
                         // Wait in the end for the specified amount of time
-                        while (this.trainMovement.waitAtEnd() && !Simulator.getDone().get()) {
+                        while (this.trainMovement.waitAtEnd() && !Main.simulator.getDone().get()) {
+                            synchronized (Simulator.tickLock) {
+                                Simulator.tickLock.wait();
+                            }
+
                             // Pause the thread
-                            Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
+//                            Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
                         }
 
                         // Close the window for the train to be edited
@@ -213,7 +221,11 @@ public class Train extends TrainSet implements Agent {
                         );
 
                         // Wait in the station for the specified amount of time
-                        while (this.trainMovement.waitAtStation() && !Simulator.getDone().get()) {
+                        while (this.trainMovement.waitAtStation() && !Main.simulator.getDone().get()) {
+                            synchronized (Simulator.tickLock) {
+                                Simulator.tickLock.wait();
+                            }
+
                             // If the train has been deactivated while waiting at a station, this will serve as the
                             // train's final station stop
                             // TODO: Maybe extend the waiting time to account for passengers disembarking?
@@ -222,7 +234,7 @@ public class Train extends TrainSet implements Agent {
                             }
 
                             // Pause the thread
-                            Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
+//                            Thread.sleep(SimulationTime.SLEEP_TIME_MILLISECONDS.get());
                         }
 
                         // Remove this station from the station list, as the the train is already here

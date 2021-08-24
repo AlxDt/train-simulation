@@ -14,7 +14,6 @@ import com.trainsimulation.model.core.environment.trainservice.passengerservice.
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
 import com.trainsimulation.model.db.DatabaseQueries;
 import com.trainsimulation.model.simulator.SimulationTime;
-import com.trainsimulation.model.simulator.Simulator;
 import com.trainsimulation.model.utility.TrainMovement;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -227,15 +226,36 @@ public class MainScreenController extends ScreenController {
     @FXML
     public void startAction() {
         requestPositionButtonsStart();
-
-        // Start the simulation time
-        Main.simulator.start();
+//
+//        // Start the simulation time
+//        Main.simulator.start();
     }
 
     @FXML
-    public void playPauseAction() {
+    // Play the simulation
+    public void playAction() {
         requestPositionButtonsPlayPause();
+
+        // Not yet running to running (play simulation)
+        if (!Main.simulator.getRunning().get()) {
+            // The simulation will now be running
+            Main.simulator.getRunning().set(true);
+            Main.simulator.getPlaySemaphore().release();
+
+//            playPauseButton.setText("Pause");
+        } else {
+            // Running to not running (pause simulation)
+            // The simulation will now be pausing
+            Main.simulator.getRunning().set(false);
+
+//            playPauseButton.setText("Play");
+        }
     }
+
+//    @FXML
+//    public void playPauseAction() {
+//
+//    }
 
     @FXML
     public void addTrainAction() throws IOException {
@@ -397,7 +417,7 @@ public class MainScreenController extends ScreenController {
             startButton.setDisable(false);
 
             playPauseButton.setDisable(true);
-            playPauseButton.setText("Pause");
+            playPauseButton.setText("Play");
 
             addTrainButton.setDisable(true);
 
@@ -501,7 +521,7 @@ public class MainScreenController extends ScreenController {
             // Check whether the add train button should be disabled
             if (checkButton) {
                 addTrainButton.setDisable(
-                        !Simulator.getStarted().get() || (
+                        !Main.simulator.getRunning().get() || (
                                 activeTrainSystem.getInactiveTrains().isEmpty()
                                         || !MainScreenController.armAddTrainActivatable.get()
                         )

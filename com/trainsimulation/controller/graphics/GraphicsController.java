@@ -66,7 +66,7 @@ public class GraphicsController extends Controller {
         // TODO: Dynamically compute for the dimensions of the visualization
         // Constants for graphics drawing
         final double initialX = canvasWidth * 0.02;
-        final double initialY = canvasHeight * 0.5;
+        final double initialY = canvasHeight * 0.5 + canvasHeight * 0.15;
 
         // The font to be used
         final String fontName = "Segoe UI";
