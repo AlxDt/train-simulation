@@ -553,7 +553,7 @@ public class MainScreenController extends ScreenController {
     private JFXTabPane createTabs(Scene scene, List<TrainSystem> trainSystems) {
         // TODO: Automate the generation of these constants
         // Set the scale down constants of the train system
-        final double[] lineScaleDownConstants = {0.046, 0.0679, 0.0579};
+        final double[] lineScaleDownConstants = {0.069, 0.10185, 0.08685};
         final double stationScaleDownConstant = 5.5;
 
         BorderPane borderPane = (BorderPane) scene.getRoot();
@@ -648,10 +648,10 @@ public class MainScreenController extends ScreenController {
         // Create canvases for the line view
         Canvas lineViewBackgroundCanvas
                 = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                tabPane.getBoundsInParent().getHeight() * 0.25);
+                tabPane.getBoundsInParent().getHeight() * 0.15);
         Canvas lineViewForegroundCanvas
                 = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                tabPane.getBoundsInParent().getHeight() * 0.25);
+                tabPane.getBoundsInParent().getHeight() * 0.15);
 
         // Create a stack pane to handle the canvases
         return new StackPane(lineViewBackgroundCanvas, lineViewForegroundCanvas);
@@ -714,11 +714,11 @@ public class MainScreenController extends ScreenController {
         // Create canvases for the station view
         Canvas stationViewBackgroundCanvas
                 = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                tabPane.getBoundsInParent().getHeight() * 0.75);
+                tabPane.getBoundsInParent().getHeight() * 0.85);
 
         Canvas stationViewForegroundCanvas
                 = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                tabPane.getBoundsInParent().getHeight() * 0.75);
+                tabPane.getBoundsInParent().getHeight() * 0.85);
 
         // Create a stack pane to handle the canvases
         StackPane stationViewCanvases = new StackPane(

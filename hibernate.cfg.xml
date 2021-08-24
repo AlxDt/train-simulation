@@ -4,7 +4,7 @@
         "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
 <hibernate-configuration>
     <session-factory>
-        <property name="connection.url">jdbc:sqlite:C:/x556uf/DLSU/MSCS/Thesis/Prototypes/train-simulation/src/com/trainsimulation/model/db/simulation_properties.db</property>
+        <property name="connection.url">jdbc:sqlite:C:/Users/ERDT/IdeaProjects/train-simulation/com/trainsimulation/model/db/simulation_properties.db</property>
         <property name="connection.driver_class">org.sqlite.JDBC</property>
         <property name="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</property>
 
