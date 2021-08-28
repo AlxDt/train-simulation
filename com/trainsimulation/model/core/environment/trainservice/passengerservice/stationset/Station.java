@@ -54,6 +54,12 @@ public class Station extends StationSet {
     // Represents a summarized version of this station
     private final StationProperty stationProperty;
 
+    // Denotes the train system of this station
+    private final TrainSystem trainSystem;
+
+    // Denotes the file path where the files for this train system is found
+    private final String stationPath;
+
     // Represents the physical layout of th
 
     public Station(TrainSystem trainSystem, StationsEntity stationsEntity) {
@@ -78,6 +84,11 @@ public class Station extends StationSet {
                 Track.Direction.SOUTHBOUND));
 
         this.stationProperty = new StationProperty(this);
+
+        this.trainSystem = trainSystem;
+        this.stationPath = trainSystem.getTrainSystemInformation().getTrainSystemPath() + "\\stations\\" + this.name;
+
+        System.out.println(this.stationPath);
     }
 
     public String getName() {

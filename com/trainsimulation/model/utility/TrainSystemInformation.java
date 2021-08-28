@@ -7,6 +7,9 @@ import java.util.Objects;
 
 // Used to identify which train system a simulation component is part of
 public class TrainSystemInformation {
+    // Denotes the base path where the files of the train systems are located
+    public static final String BASE_PATH = "C:\\Users\\ERDT\\Desktop\\train-simulation\\train-systems";
+
     // Denotes the name of the train system
     private final String name;
 
@@ -19,12 +22,17 @@ public class TrainSystemInformation {
     // Denotes the schedule of operations for this train system
     private final Schedule schedule;
 
+    // Denotes the file path where the files for this train system is found
+    private final String trainSystemPath;
+
     public TrainSystemInformation(String trainSystem, String color, SimulationTime startTime, SimulationTime endTime) {
         this.name = trainSystem;
         this.idName = this.name.replace("\\-", "").toLowerCase();
         this.color = color;
 
         this.schedule = new Schedule(startTime, endTime);
+
+        this.trainSystemPath = TrainSystemInformation.BASE_PATH + "\\" + this.name;
     }
 
     public TrainSystemInformation(TrainSystemsEntity trainSystemsEntity) {
@@ -33,6 +41,9 @@ public class TrainSystemInformation {
         this.color = trainSystemsEntity.getColor();
 
         this.schedule = new Schedule(trainSystemsEntity.getSchedulesBySchedule());
+
+        this.trainSystemPath = TrainSystemInformation.BASE_PATH + "\\" + this.name;
+        System.out.println(this.trainSystemPath);
     }
 
     public String getName() {
@@ -49,6 +60,10 @@ public class TrainSystemInformation {
 
     public Schedule getSchedule() {
         return schedule;
+    }
+
+    public String getTrainSystemPath() {
+        return trainSystemPath;
     }
 
     @Override
