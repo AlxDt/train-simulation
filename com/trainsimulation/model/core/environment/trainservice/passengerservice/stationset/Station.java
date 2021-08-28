@@ -54,6 +54,8 @@ public class Station extends StationSet {
     // Represents a summarized version of this station
     private final StationProperty stationProperty;
 
+    // Represents the physical layout of th
+
     public Station(TrainSystem trainSystem, StationsEntity stationsEntity) {
         super(trainSystem);
 
