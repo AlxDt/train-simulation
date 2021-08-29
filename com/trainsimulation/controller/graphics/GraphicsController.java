@@ -1,6 +1,8 @@
 package com.trainsimulation.controller.graphics;
 
+import com.crowdsimulation.model.core.environment.station.Floor;
 import com.trainsimulation.controller.Controller;
+import com.trainsimulation.controller.screen.MainScreenController;
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.infrastructure.track.Junction;
 import com.trainsimulation.model.core.environment.infrastructure.track.Segment;
@@ -16,6 +18,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -36,8 +39,12 @@ public class GraphicsController extends Controller {
     }
 
     // Send a request to draw the station view on the canvas
-    public static void requestDrawStationView(StackPane canvases, Station station, double scaleDownFactor,
-                                              boolean background) {
+    public static void requestDrawStationView(
+            StackPane canvases,
+            Station station,
+            double scaleDownFactor,
+            boolean background
+    ) {
         javafx.application.Platform.runLater(() -> {
             // Tell the JavaFX thread that we'd like to draw on the canvas
             drawStationView(canvases, station, scaleDownFactor, background);
@@ -66,7 +73,7 @@ public class GraphicsController extends Controller {
         // TODO: Dynamically compute for the dimensions of the visualization
         // Constants for graphics drawing
         final double initialX = canvasWidth * 0.02;
-        final double initialY = canvasHeight * 0.5 + canvasHeight * 0.15;
+        final double initialY = canvasHeight * 0.5;
 
         // The font to be used
         final String fontName = "Segoe UI";
@@ -246,8 +253,12 @@ public class GraphicsController extends Controller {
     }
 
     // Draw all that is needed in the station view on the canvas
-    private static void drawStationView(StackPane canvases, Station station, double scaleDownFactor,
-                                        boolean background) {
+    private static void drawStationView(
+            StackPane canvases,
+            Station station,
+            double scaleDownFactor,
+            boolean background
+    ) {
         // TODO: Ensure train width is to scale (use standard gauge measurements)
         // Get the canvases and their graphics contexts
         final Canvas backgroundCanvas = (Canvas) canvases.getChildren().get(0);
@@ -255,6 +266,26 @@ public class GraphicsController extends Controller {
 
         final GraphicsContext backgroundGraphicsContext = backgroundCanvas.getGraphicsContext2D();
         final GraphicsContext foregroundGraphicsContext = foregroundCanvas.getGraphicsContext2D();
+
+        // TODO: Enable for other train systems and stations
+        List<Floor> currentFloors = MainScreenController.getActiveSimulationContext().getFloors();
+
+        if (currentFloors != null) {
+            Floor currentFloor = MainScreenController.getActiveSimulationContext().getFloor();
+
+            double tileSize = backgroundCanvas.getWidth() / currentFloor.getColumns();
+
+            com.crowdsimulation.controller.graphics.GraphicsController.requestDrawStationView(
+                    canvases,
+                    currentFloor,
+                    tileSize,
+                    background,
+                    false,
+                    false,
+                    true
+            );
+        }
+
 
         // Get the height and width of the canvases
         final double canvasWidth = backgroundCanvas.getWidth();

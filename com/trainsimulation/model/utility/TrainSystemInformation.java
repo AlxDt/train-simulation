@@ -43,7 +43,6 @@ public class TrainSystemInformation {
         this.schedule = new Schedule(trainSystemsEntity.getSchedulesBySchedule());
 
         this.trainSystemPath = TrainSystemInformation.BASE_PATH + "\\" + this.name;
-        System.out.println(this.trainSystemPath);
     }
 
     public String getName() {

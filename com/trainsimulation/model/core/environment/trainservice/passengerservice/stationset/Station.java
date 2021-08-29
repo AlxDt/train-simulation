@@ -1,5 +1,6 @@
 package com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset;
 
+import com.crowdsimulation.controller.controls.feature.main.MainScreenController;
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.infrastructure.track.Track;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.StationProperty;
@@ -8,9 +9,12 @@ import com.trainsimulation.model.simulator.SimulationTime;
 import com.trainsimulation.model.utility.Schedule;
 import com.trainsimulation.model.utility.StationCapacity;
 
-import java.util.Comparator;
-import java.util.EnumMap;
-import java.util.Map;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 // Stations are structures in a train line where trains regularly stop to load and unload passengers
 public class Station extends StationSet {
@@ -60,7 +64,8 @@ public class Station extends StationSet {
     // Denotes the file path where the files for this train system is found
     private final String stationPath;
 
-    // Represents the physical layout of th
+    // Represents the physical layout of the station with all the station objects and floors
+    private com.crowdsimulation.model.core.environment.station.Station stationLayout;
 
     public Station(TrainSystem trainSystem, StationsEntity stationsEntity) {
         super(trainSystem);
@@ -86,9 +91,9 @@ public class Station extends StationSet {
         this.stationProperty = new StationProperty(this);
 
         this.trainSystem = trainSystem;
-        this.stationPath = trainSystem.getTrainSystemInformation().getTrainSystemPath() + "\\stations\\" + this.name;
 
-        System.out.println(this.stationPath);
+        this.stationPath = trainSystem.getTrainSystemInformation().getTrainSystemPath() + "\\stations\\" + this.name;
+        this.stationLayout = null;
     }
 
     public String getName() {
@@ -119,8 +124,25 @@ public class Station extends StationSet {
         return stationProperty;
     }
 
+    public String getStationPath() {
+        return stationPath;
+    }
+
+    public com.crowdsimulation.model.core.environment.station.Station getStationLayout() {
+        return stationLayout;
+    }
+
+    public void setStationLayout(com.crowdsimulation.model.core.environment.station.Station stationLayout) {
+        this.stationLayout = stationLayout;
+    }
+
     public int getDepotSequence() {
         return depotSequence;
+    }
+
+    @Override
+    public TrainSystem getTrainSystem() {
+        return trainSystem;
     }
 
     // Checks the time, inflow rate, current number of passengers in concourse and platform areas, and operational
@@ -148,5 +170,36 @@ public class Station extends StationSet {
     // Designates the station as not operational with the value of passable depending on the parameter
     public void closeStation(boolean passable) {
         // TODO: Implement station closing logic
+    }
+
+    // Contains the necessary operations to load a station in parallel
+    public static class StationLayoutLoadTask implements Callable<Void> {
+        private final Station station;
+
+        public StationLayoutLoadTask(Station station) {
+            this.station = station;
+        }
+
+        @Override
+        public Void call() throws Exception {
+            // Prepare the path where the station layout may be found
+            String stationLayoutPath
+                    = station.getStationPath() + "\\run\\"
+                    + station.getName()
+                    + com.crowdsimulation.model.core.environment.station.Station.STATION_LAYOUT_FILE_EXTENSION;
+
+            File stationLayoutFile = new File(stationLayoutPath);
+
+            // Load the station layout from the file
+            final com.crowdsimulation.model.core.environment.station.Station stationLayout
+                    = MainScreenController.loadStation(stationLayoutFile);
+
+            // Then set its parent
+            station.setStationLayout(stationLayout);
+
+            System.out.println("Successfully loaded " + stationLayoutFile.getName());
+
+            return null;
+        }
     }
 }

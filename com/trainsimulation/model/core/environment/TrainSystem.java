@@ -9,6 +9,8 @@ import com.trainsimulation.model.utility.TrainSystemInformation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 // Denotes a train system object containing all its information, depot, and stations
 public class TrainSystem {
@@ -74,6 +76,25 @@ public class TrainSystem {
 
     public List<Passenger> getPassengers() {
         return passengers;
+    }
+
+    // Initialize station layouts of all stations in parallel
+    public void initializeStationLayouts(List<Station> stations) {
+        // Initialize a thread pool to load station layouts in parallel
+        final int NUM_CPUS = Runtime.getRuntime().availableProcessors();
+        ExecutorService stationLayoutLoadingExecutorService = Executors.newFixedThreadPool(NUM_CPUS);
+
+        List<Station.StationLayoutLoadTask> stationLayoutLoadTasks = new ArrayList<>();
+
+        for (Station station : stations) {
+            stationLayoutLoadTasks.add(new Station.StationLayoutLoadTask(station));
+        }
+
+        try {
+            stationLayoutLoadingExecutorService.invokeAll(stationLayoutLoadTasks);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

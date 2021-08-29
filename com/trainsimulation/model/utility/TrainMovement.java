@@ -56,6 +56,9 @@ public class TrainMovement {
     // Denotes the train's current velocity (km/h)
     private double velocity;
 
+    // Denotes the train's current station
+    private Station currentStation;
+
     // Denotes the train's last visited station
     private Station previousStoppedStation;
 
@@ -106,6 +109,7 @@ public class TrainMovement {
         this.endWaitingTime = endWaitingTime;
         this.maxVelocity = maxVelocity;
 
+        this.currentStation = null;
         this.previousStoppedStation = null;
         this.previousPassedStation = null;
 
@@ -161,6 +165,14 @@ public class TrainMovement {
 
     public Train getTrain() {
         return train;
+    }
+
+    public Station getCurrentStation() {
+        return currentStation;
+    }
+
+    public void setCurrentStation(Station currentStation) {
+        this.currentStation = currentStation;
     }
 
     public Station getPreviousStoppedStation() {
@@ -335,6 +347,9 @@ public class TrainMovement {
                             this.hasStopped = true;
                         }
 
+                        // This is the current station
+                        this.currentStation = currentStation;
+
                         // The train has now passed this station
                         this.previousPassedStation = currentStation;
 
@@ -359,6 +374,9 @@ public class TrainMovement {
             // Since the train is in a station (whether it stops here or not), we may now reset the waited at end
             // variable
             this.waitedAtEnd = false;
+
+            // This is the current station
+            this.currentStation = currentStation;
 
             // If it hasn't been noted yet, the train has now passed the first station from the depot
             if (this.previousPassedStation == null) {
@@ -396,6 +414,9 @@ public class TrainMovement {
         // Compute the location of each train carriage after moving forward by the specified velocity
         // Move each carriage one by one
         synchronized (this.train.getTrainCarriages()) {
+            // Because this train is moving, this train has no current station
+            this.currentStation = null;
+
             List<TrainCarriage> trainCarriages = this.train.getTrainCarriages();
 
             // Compute for the updated velocity
@@ -919,7 +940,8 @@ public class TrainMovement {
         // TODO: Move to own loop
         GraphicsController.requestDrawStationView(MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
                 MainScreenController.getActiveSimulationContext().getCurrentStation(),
-                MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(), false);
+                MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(), false
+        );
     }
 
     // Computes the velocity of the train (km/h)

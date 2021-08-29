@@ -122,6 +122,9 @@ public class DatabaseQueries {
             exception.printStackTrace();
         }
 
+        // Initialize the layouts of the stations in the list
+        trainSystem.initializeStationLayouts(stations);
+
         return stations;
     }
 

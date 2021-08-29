@@ -19,13 +19,16 @@ import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
@@ -34,6 +37,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.StrokeType;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
+import javafx.scene.text.TextAlignment;
 
 import java.io.IOException;
 import java.time.LocalTime;
@@ -616,15 +620,15 @@ public class MainScreenController extends ScreenController {
                     simulationContext
             );
 
-            stationViewVBox.setPadding(new Insets(10.0));
-            stationViewVBox.setSpacing(10.0);
+//            stationViewVBox.setPadding(new Insets(10.0));
+//            stationViewVBox.setSpacing(10.0);
 
             // Add a separator in between
             Separator separator = new Separator(Orientation.HORIZONTAL);
 
             // Then create a container to handle both stack panes
             VBox viewContainer = new VBox(lineViewStackPane, separator, stationViewVBox);
-            viewContainer.setPadding(new Insets(20.0));
+//            viewContainer.setPadding(new Insets(20.0));
 
             // Then add the container to the center of the border pane
             tabBorderPane.setCenter(viewContainer);
@@ -668,10 +672,10 @@ public class MainScreenController extends ScreenController {
         // Create canvases for the line view
         Canvas lineViewBackgroundCanvas
                 = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                tabPane.getBoundsInParent().getHeight() * 0.15);
+                tabPane.getBoundsInParent().getHeight() * 0.05);
         Canvas lineViewForegroundCanvas
                 = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                tabPane.getBoundsInParent().getHeight() * 0.15);
+                tabPane.getBoundsInParent().getHeight() * 0.05);
 
         // Create a stack pane to handle the canvases
         return new StackPane(lineViewBackgroundCanvas, lineViewForegroundCanvas);
@@ -679,7 +683,27 @@ public class MainScreenController extends ScreenController {
 
     private VBox createStationView(JFXTabPane tabPane, String trainSystemIdName, SimulationContext simulationContext) {
         // Create a button bar for the station view controls
-        JFXButton previousStationButton = new JFXButton("<");
+        JFXButton firstStationButton = new JFXButton("|⮜");
+
+        firstStationButton.setButtonType(JFXButton.ButtonType.RAISED);
+        firstStationButton.setDisable(false);
+        firstStationButton.setRipplerFill(Color.WHITE);
+        firstStationButton.setStyle("-fx-background-color: #85756e;");
+        firstStationButton.setTextFill(Color.WHITE);
+        firstStationButton.setFont(new Font("System Bold", 12.0));
+        firstStationButton.setOnAction(event -> {
+            simulationContext.moveToFirstStation();
+
+            // Redraw the station view
+            GraphicsController.requestDrawStationView(
+                    MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
+                    MainScreenController.getActiveSimulationContext().getCurrentStation(),
+                    MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
+                    true
+            );
+        });
+
+        JFXButton previousStationButton = new JFXButton("⮜");
 
         previousStationButton.setButtonType(JFXButton.ButtonType.RAISED);
         previousStationButton.setDisable(true);
@@ -695,7 +719,7 @@ public class MainScreenController extends ScreenController {
                     MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getCurrentStation(),
                     MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
-                    false
+                    true
             );
         });
 
@@ -703,9 +727,51 @@ public class MainScreenController extends ScreenController {
 
         currentStationText.setStrokeType(StrokeType.OUTSIDE);
         currentStationText.setStrokeWidth(0.0);
-        currentStationText.setFont(new Font("System Bold", 12.0));
+        currentStationText.setFont(new Font("System Bold", 15.0));
+        currentStationText.setWrappingWidth(200.0);
+        currentStationText.setTextAlignment(TextAlignment.CENTER);
 
-        JFXButton nextStationButton = new JFXButton(">");
+        JFXButton floorBelowButton = new JFXButton("⮟");
+
+        floorBelowButton.setButtonType(JFXButton.ButtonType.RAISED);
+        floorBelowButton.setDisable(true);
+        floorBelowButton.setRipplerFill(Color.WHITE);
+        floorBelowButton.setStyle("-fx-background-color: #85756e;");
+        floorBelowButton.setTextFill(Color.WHITE);
+        floorBelowButton.setFont(new Font("System Bold", 12.0));
+        floorBelowButton.setOnAction(event -> {
+            simulationContext.moveToFloorBelow();
+
+            // Redraw the station view
+            GraphicsController.requestDrawStationView(
+                    MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
+                    MainScreenController.getActiveSimulationContext().getCurrentStation(),
+                    MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
+                    true
+            );
+        });
+
+        JFXButton floorAboveButton = new JFXButton("⮝");
+
+        floorAboveButton.setButtonType(JFXButton.ButtonType.RAISED);
+        floorAboveButton.setDisable(true);
+        floorAboveButton.setRipplerFill(Color.WHITE);
+        floorAboveButton.setStyle("-fx-background-color: #85756e;");
+        floorAboveButton.setTextFill(Color.WHITE);
+        floorAboveButton.setFont(new Font("System Bold", 12.0));
+        floorAboveButton.setOnAction(event -> {
+            simulationContext.moveToFloorAbove();
+
+            // Redraw the station view
+            GraphicsController.requestDrawStationView(
+                    MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
+                    MainScreenController.getActiveSimulationContext().getCurrentStation(),
+                    MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
+                    true
+            );
+        });
+
+        JFXButton nextStationButton = new JFXButton("⮞");
 
         nextStationButton.setButtonType(JFXButton.ButtonType.RAISED);
         nextStationButton.setDisable(true);
@@ -721,24 +787,55 @@ public class MainScreenController extends ScreenController {
                     MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getCurrentStation(),
                     MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
-                    false
+                    true
             );
         });
 
-        HBox stationViewControls = new HBox(previousStationButton, currentStationText, nextStationButton);
+        JFXButton lastStationButton = new JFXButton("⮞|");
+
+        lastStationButton.setButtonType(JFXButton.ButtonType.RAISED);
+        lastStationButton.setDisable(false);
+        lastStationButton.setRipplerFill(Color.WHITE);
+        lastStationButton.setStyle("-fx-background-color: #85756e;");
+        lastStationButton.setTextFill(Color.WHITE);
+        lastStationButton.setFont(new Font("System Bold", 12.0));
+        lastStationButton.setOnAction(event -> {
+            simulationContext.moveToLastStation();
+
+            // Redraw the station view
+            GraphicsController.requestDrawStationView(
+                    MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
+                    MainScreenController.getActiveSimulationContext().getCurrentStation(),
+                    MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
+                    true
+            );
+        });
+
+        HBox stationViewControls = new HBox(
+                firstStationButton,
+                previousStationButton,
+                currentStationText,
+                floorBelowButton,
+                floorAboveButton,
+                nextStationButton,
+                lastStationButton
+        );
 
         stationViewControls.setAlignment(Pos.CENTER);
-        stationViewControls.setPrefHeight(50.0);
+        stationViewControls.setPrefHeight(tabPane.getHeight() * 0.05);
         stationViewControls.setSpacing(20.0);
 
         // Create canvases for the station view
-        Canvas stationViewBackgroundCanvas
-                = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                tabPane.getBoundsInParent().getHeight() * 0.85);
+        final double canvasWidth = 4400.0;
+        final double canvasHeight = 2000.0;
 
-        Canvas stationViewForegroundCanvas
-                = new Canvas(tabPane.getBoundsInParent().getWidth(),
-                tabPane.getBoundsInParent().getHeight() * 0.85);
+        Canvas stationViewBackgroundCanvas = new Canvas(canvasWidth, canvasHeight);
+//                = new Canvas(tabPane.getWidth() * 0.9925,
+//                tabPane.getHeight() * 0.85);
+
+        Canvas stationViewForegroundCanvas = new Canvas(canvasWidth, canvasHeight);
+//                = new Canvas(tabPane.getWidth() * 0.9925,
+//                tabPane.getHeight() * 0.85);
 
         // Create a stack pane to handle the canvases
         StackPane stationViewCanvases = new StackPane(
@@ -746,13 +843,60 @@ public class MainScreenController extends ScreenController {
                 stationViewForegroundCanvas
         );
 
+        // Then create a scroll pane to contain the stack pane
+        ScrollPane stationViewScrollPane = new ScrollPane();
+
+        stationViewScrollPane.setContent(stationViewCanvases);
+        stationViewScrollPane.setPrefWidth(tabPane.getWidth());
+        stationViewScrollPane.setPrefHeight(tabPane.getHeight() * 0.85);
+        stationViewScrollPane.setPannable(true);
+        stationViewScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        stationViewScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+        stationViewScrollPane.setFitToHeight(true);
+        stationViewScrollPane.setFitToWidth(true);
+
+        tabPane.getScene().addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            final KeyCombination zoomInCombination
+                    = new KeyCodeCombination(KeyCode.EQUALS, KeyCombination.CONTROL_DOWN);
+            final KeyCombination zoomOutCombination
+                    = new KeyCodeCombination(KeyCode.MINUS, KeyCombination.CONTROL_DOWN);
+            final KeyCombination normalZoomCombination
+                    = new KeyCodeCombination(KeyCode.DIGIT0, KeyCombination.CONTROL_DOWN);
+
+            if (zoomInCombination.match(event)) {
+                double newScaleX = stationViewCanvases.getScaleX() * 1.25;
+                double newScaleY = stationViewCanvases.getScaleY() * 1.25;
+
+                stationViewCanvases.setScaleX(newScaleX);
+                stationViewCanvases.setScaleY(newScaleY);
+            } else if (zoomOutCombination.match(event)) {
+                double newScaleX = stationViewCanvases.getScaleX() * 0.75;
+                double newScaleY = stationViewCanvases.getScaleY() * 0.75;
+
+                stationViewCanvases.setScaleX(newScaleX);
+                stationViewCanvases.setScaleY(newScaleY);
+            } else if (normalZoomCombination.match(event)) {
+                stationViewCanvases.setScaleX(1.0);
+                stationViewCanvases.setScaleY(1.0);
+            }
+        });
+
         // Take note of certain controls
+        simulationContext.setFirstStationButton(firstStationButton);
         simulationContext.setPreviousStationButton(previousStationButton);
+
         simulationContext.setCurrentStationText(currentStationText);
+
+        simulationContext.setFloorAboveButton(floorAboveButton);
+        simulationContext.setFloorBelowButton(floorBelowButton);
+
         simulationContext.setNextStationButton(nextStationButton);
+        simulationContext.setLastStationButton(lastStationButton);
 
         // Then create a vbox that handles the station controls along with the canvases
-        return new VBox(stationViewControls, stationViewCanvases);
+//        return new VBox(stationViewControls, stationViewCanvases);
+        return new VBox(stationViewControls, stationViewScrollPane);
     }
 
     // Draw the train infrastructure into the canvas

@@ -1,12 +1,16 @@
 package com.trainsimulation.model.simulator;
 
+import com.crowdsimulation.controller.controls.feature.main.MainScreenController;
 import com.trainsimulation.controller.Main;
 import com.trainsimulation.model.core.environment.TrainSystem;
+import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.db.DatabaseInterface;
 import com.trainsimulation.model.simulator.setup.EnvironmentSetup;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -172,10 +176,5 @@ public class Simulator {
 //            // Then tell the UI thread to disable all buttons
 //            Main.mainScreenController.requestDisableButtons();
 //        }).start();
-    }
-
-    // TODO: Implement simulation playing/pausing logic
-    public void togglePlayPause() {
-
     }
 }

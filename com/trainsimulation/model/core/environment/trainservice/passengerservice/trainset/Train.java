@@ -151,13 +151,14 @@ public class Train extends TrainSet implements Agent {
                     // Take note of the action command
                     trainAction = this.trainMovement.move();
 
-                    // TODO: Move to own loop
-                    // Redraw the station view
-                    GraphicsController.requestDrawStationView(
-                            MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
-                            MainScreenController.getActiveSimulationContext().getCurrentStation(),
-                            MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
-                            false);
+//                    // TODO: Move to own loop
+//                    // Redraw the station view
+//                    GraphicsController.requestDrawStationView(
+//                            MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
+//                            MainScreenController.getActiveSimulationContext().getCurrentStation(),
+//                            MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
+//                            false
+//                    );
 
                     // Update the summary
                     this.trainProperty.updateTrainProperty(this.identifier, this.trainMovement, this.trainCarriages
