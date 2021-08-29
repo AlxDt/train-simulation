@@ -699,7 +699,7 @@ public class MainScreenController extends ScreenController {
                     MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getCurrentStation(),
                     MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
-                    true
+                    false
             );
         });
 
@@ -719,7 +719,7 @@ public class MainScreenController extends ScreenController {
                     MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getCurrentStation(),
                     MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
-                    true
+                    false
             );
         });
 
@@ -747,7 +747,7 @@ public class MainScreenController extends ScreenController {
                     MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getCurrentStation(),
                     MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
-                    true
+                    false
             );
         });
 
@@ -767,7 +767,7 @@ public class MainScreenController extends ScreenController {
                     MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getCurrentStation(),
                     MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
-                    true
+                    false
             );
         });
 
@@ -787,7 +787,7 @@ public class MainScreenController extends ScreenController {
                     MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getCurrentStation(),
                     MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
-                    true
+                    false
             );
         });
 
@@ -807,15 +807,15 @@ public class MainScreenController extends ScreenController {
                     MainScreenController.getActiveSimulationContext().getStationViewCanvases(),
                     MainScreenController.getActiveSimulationContext().getCurrentStation(),
                     MainScreenController.getActiveSimulationContext().getStationScaleDownFactor(),
-                    true
+                    false
             );
         });
 
         HBox stationViewControls = new HBox(
                 firstStationButton,
                 previousStationButton,
-                currentStationText,
                 floorBelowButton,
+                currentStationText,
                 floorAboveButton,
                 nextStationButton,
                 lastStationButton

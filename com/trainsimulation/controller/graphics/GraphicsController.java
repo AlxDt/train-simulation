@@ -11,6 +11,7 @@ import com.trainsimulation.model.core.environment.trainservice.passengerservice.
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.TrainCarriage;
+import com.trainsimulation.model.simulator.SimulationTime;
 import com.trainsimulation.model.utility.TrainQueue;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -264,8 +265,8 @@ public class GraphicsController extends Controller {
         final Canvas backgroundCanvas = (Canvas) canvases.getChildren().get(0);
         final Canvas foregroundCanvas = (Canvas) canvases.getChildren().get(1);
 
-        final GraphicsContext backgroundGraphicsContext = backgroundCanvas.getGraphicsContext2D();
-        final GraphicsContext foregroundGraphicsContext = foregroundCanvas.getGraphicsContext2D();
+//        final GraphicsContext backgroundGraphicsContext = backgroundCanvas.getGraphicsContext2D();
+//        final GraphicsContext foregroundGraphicsContext = foregroundCanvas.getGraphicsContext2D();
 
         // TODO: Enable for other train systems and stations
         List<Floor> currentFloors = MainScreenController.getActiveSimulationContext().getFloors();
@@ -275,175 +276,177 @@ public class GraphicsController extends Controller {
 
             double tileSize = backgroundCanvas.getWidth() / currentFloor.getColumns();
 
+            // For times shorter than this, speed awareness will be implemented
+            final int speedAwarenessLimitMilliseconds = 10;
+
             com.crowdsimulation.controller.graphics.GraphicsController.requestDrawStationView(
                     canvases,
                     currentFloor,
                     tileSize,
                     background,
-                    false,
+                    SimulationTime.SLEEP_TIME_MILLISECONDS.get() < speedAwarenessLimitMilliseconds,
                     false,
                     true
             );
         }
 
-
-        // Get the height and width of the canvases
-        final double canvasWidth = backgroundCanvas.getWidth();
-        final double canvasHeight = backgroundCanvas.getHeight();
-
-        // Constants for graphics drawing
-        final double initialX = canvasWidth * 0.2;
-        final double initialY = canvasHeight * 0.5;
-
-        // Clear everything in the foreground canvas, if all dynamic elements are to be drawn
-        if (!background) {
-            foregroundGraphicsContext.clearRect(0, 0, canvasWidth, canvasHeight);
-        }
-
-        // The width of the lines
-        final double lineWidth = 8.0;
-
-        // The size of the trains
-        final double trainGraphicsDiameter = lineWidth * 1.5;
-
-        // Prepare the colors and fonts
-        Color color = toColor(station.getTrainSystem().getTrainSystemInformation().getColor());
-
-        Color trainColor = Color.rgb(170, 170, 170);
-
-        backgroundGraphicsContext.setFill(color);
-        backgroundGraphicsContext.setStroke(color);
-
-        foregroundGraphicsContext.setStroke(Color.BLACK);
-
-        // Prepare other graphics settings
-        backgroundGraphicsContext.setLineWidth(lineWidth);
-
-        double x = initialX;
-        double y = initialY;
-
-        double ySouthbound = y - y * 0.03;
-        double yNorthbound = y + y * 0.03;
-
-        Map<Track.Direction, Platform> currentStationPlatforms = station.getPlatforms();
-
-        Platform northboundPlatform = currentStationPlatforms.get(Track.Direction.NORTHBOUND);
-        Platform southboundPlatform = currentStationPlatforms.get(Track.Direction.SOUTHBOUND);
-
-        Segment northboundSegment = northboundPlatform.getPlatformHub().getPlatformSegment();
-        Segment southboundSegment = southboundPlatform.getPlatformHub().getPlatformSegment();
-
-        int northboundSegmentLength = northboundSegment.getLength();
-        int southboundSegmentLength = southboundSegment.getLength();
-
-        // Draw the background
-        if (background) {
-            // Draw the station bounds
-            // TODO: Actually use station layout information instead of drawing a random box
-            final Color stationColor = Color.LIGHTGRAY;
-            final double stationWidth = 250;
-
-            backgroundGraphicsContext.setFill(stationColor);
-            backgroundGraphicsContext.fillRect(
-                    x,
-                    y - stationWidth * 0.5,
-                    northboundSegmentLength * scaleDownFactor,
-                    stationWidth
-            );
-            backgroundGraphicsContext.setFill(color);
-
-            // Draw the station segments (and the phantom segments that lead to and from the station)
-            // TODO: Draw station platforms with floors, etc.
-            final Color transparentColor = Color.color(color.getRed(), color.getGreen(), color.getBlue(), 0.5);
-
-            backgroundGraphicsContext.setStroke(transparentColor);
-            backgroundGraphicsContext.strokeLine(
-                    0,
-                    yNorthbound,
-                    x,
-                    yNorthbound
-            );
-
-            backgroundGraphicsContext.strokeLine(
-                    0,
-                    ySouthbound,
-                    x,
-                    ySouthbound
-            );
-
-            backgroundGraphicsContext.setStroke(color);
-            backgroundGraphicsContext.strokeLine(
-                    x,
-                    yNorthbound,
-                    x + northboundSegmentLength * scaleDownFactor,
-                    yNorthbound
-            );
-
-            backgroundGraphicsContext.strokeLine(
-                    x,
-                    ySouthbound,
-                    x + southboundSegmentLength * scaleDownFactor,
-                    ySouthbound
-            );
-
-            backgroundGraphicsContext.setStroke(transparentColor);
-            backgroundGraphicsContext.strokeLine(
-                    x,
-                    yNorthbound,
-                    canvasWidth,
-                    yNorthbound
-            );
-
-            backgroundGraphicsContext.strokeLine(
-                    x,
-                    ySouthbound,
-                    canvasWidth,
-                    ySouthbound
-            );
-        } else {
-            foregroundGraphicsContext.setFill(trainColor);
-            foregroundGraphicsContext.setLineWidth(trainGraphicsDiameter);
-
-            // Draw the trains on the segments, if there are any
-            synchronized (northboundSegment.getTrainQueue()) {
-                TrainQueue trainQueue = northboundSegment.getTrainQueue();
-
-                TrainCarriage trainCarriage;
-
-                for (int carriageInSegmentIndex = 0; carriageInSegmentIndex < trainQueue.getTrainQueueSize();
-                     carriageInSegmentIndex++) {
-                    trainCarriage = trainQueue.getTrainCarriage(carriageInSegmentIndex);
-
-                    foregroundGraphicsContext.fillRect(
-                            x + (trainCarriage.getTrainCarriageLocation().getSegmentClearance()
-                                    - trainCarriage.getLength()) * scaleDownFactor,
-                            yNorthbound - trainGraphicsDiameter * 0.5,
-                            trainCarriage.getLength() * scaleDownFactor,
-                            trainGraphicsDiameter
-                    );
-                }
-            }
-
-            // Draw the trains on the segments, if there are any
-            synchronized (southboundSegment.getTrainQueue()) {
-                TrainQueue trainQueue = southboundSegment.getTrainQueue();
-
-                TrainCarriage trainCarriage;
-
-                for (int carriageInSegmentIndex = 0; carriageInSegmentIndex < trainQueue.getTrainQueueSize();
-                     carriageInSegmentIndex++) {
-                    trainCarriage = trainQueue.getTrainCarriage(carriageInSegmentIndex);
-
-                    foregroundGraphicsContext.fillRect(
-                            (x + southboundSegmentLength * scaleDownFactor)
-                                    - trainCarriage.getTrainCarriageLocation().getSegmentClearance() * scaleDownFactor,
-                            ySouthbound - trainGraphicsDiameter * 0.5,
-                            trainCarriage.getLength() * scaleDownFactor,
-                            trainGraphicsDiameter
-                    );
-                }
-            }
-        }
+//        // Get the height and width of the canvases
+//        final double canvasWidth = backgroundCanvas.getWidth();
+//        final double canvasHeight = backgroundCanvas.getHeight();
+//
+//        // Constants for graphics drawing
+//        final double initialX = canvasWidth * 0.2;
+//        final double initialY = canvasHeight * 0.5;
+//
+//        // Clear everything in the foreground canvas, if all dynamic elements are to be drawn
+//        if (!background) {
+//            foregroundGraphicsContext.clearRect(0, 0, canvasWidth, canvasHeight);
+//        }
+//
+//        // The width of the lines
+//        final double lineWidth = 8.0;
+//
+//        // The size of the trains
+//        final double trainGraphicsDiameter = lineWidth * 1.5;
+//
+//        // Prepare the colors and fonts
+//        Color color = toColor(station.getTrainSystem().getTrainSystemInformation().getColor());
+//
+//        Color trainColor = Color.rgb(170, 170, 170);
+//
+//        backgroundGraphicsContext.setFill(color);
+//        backgroundGraphicsContext.setStroke(color);
+//
+//        foregroundGraphicsContext.setStroke(Color.BLACK);
+//
+//        // Prepare other graphics settings
+//        backgroundGraphicsContext.setLineWidth(lineWidth);
+//
+//        double x = initialX;
+//        double y = initialY;
+//
+//        double ySouthbound = y - y * 0.03;
+//        double yNorthbound = y + y * 0.03;
+//
+//        Map<Track.Direction, Platform> currentStationPlatforms = station.getPlatforms();
+//
+//        Platform northboundPlatform = currentStationPlatforms.get(Track.Direction.NORTHBOUND);
+//        Platform southboundPlatform = currentStationPlatforms.get(Track.Direction.SOUTHBOUND);
+//
+//        Segment northboundSegment = northboundPlatform.getPlatformHub().getPlatformSegment();
+//        Segment southboundSegment = southboundPlatform.getPlatformHub().getPlatformSegment();
+//
+//        int northboundSegmentLength = northboundSegment.getLength();
+//        int southboundSegmentLength = southboundSegment.getLength();
+//
+//        // Draw the background
+//        if (background) {
+//            // Draw the station bounds
+//            // TODO: Actually use station layout information instead of drawing a random box
+//            final Color stationColor = Color.LIGHTGRAY;
+//            final double stationWidth = 250;
+//
+//            backgroundGraphicsContext.setFill(stationColor);
+//            backgroundGraphicsContext.fillRect(
+//                    x,
+//                    y - stationWidth * 0.5,
+//                    northboundSegmentLength * scaleDownFactor,
+//                    stationWidth
+//            );
+//            backgroundGraphicsContext.setFill(color);
+//
+//            // Draw the station segments (and the phantom segments that lead to and from the station)
+//            // TODO: Draw station platforms with floors, etc.
+//            final Color transparentColor = Color.color(color.getRed(), color.getGreen(), color.getBlue(), 0.5);
+//
+//            backgroundGraphicsContext.setStroke(transparentColor);
+//            backgroundGraphicsContext.strokeLine(
+//                    0,
+//                    yNorthbound,
+//                    x,
+//                    yNorthbound
+//            );
+//
+//            backgroundGraphicsContext.strokeLine(
+//                    0,
+//                    ySouthbound,
+//                    x,
+//                    ySouthbound
+//            );
+//
+//            backgroundGraphicsContext.setStroke(color);
+//            backgroundGraphicsContext.strokeLine(
+//                    x,
+//                    yNorthbound,
+//                    x + northboundSegmentLength * scaleDownFactor,
+//                    yNorthbound
+//            );
+//
+//            backgroundGraphicsContext.strokeLine(
+//                    x,
+//                    ySouthbound,
+//                    x + southboundSegmentLength * scaleDownFactor,
+//                    ySouthbound
+//            );
+//
+//            backgroundGraphicsContext.setStroke(transparentColor);
+//            backgroundGraphicsContext.strokeLine(
+//                    x,
+//                    yNorthbound,
+//                    canvasWidth,
+//                    yNorthbound
+//            );
+//
+//            backgroundGraphicsContext.strokeLine(
+//                    x,
+//                    ySouthbound,
+//                    canvasWidth,
+//                    ySouthbound
+//            );
+//        } else {
+//            foregroundGraphicsContext.setFill(trainColor);
+//            foregroundGraphicsContext.setLineWidth(trainGraphicsDiameter);
+//
+//            // Draw the trains on the segments, if there are any
+//            synchronized (northboundSegment.getTrainQueue()) {
+//                TrainQueue trainQueue = northboundSegment.getTrainQueue();
+//
+//                TrainCarriage trainCarriage;
+//
+//                for (int carriageInSegmentIndex = 0; carriageInSegmentIndex < trainQueue.getTrainQueueSize();
+//                     carriageInSegmentIndex++) {
+//                    trainCarriage = trainQueue.getTrainCarriage(carriageInSegmentIndex);
+//
+//                    foregroundGraphicsContext.fillRect(
+//                            x + (trainCarriage.getTrainCarriageLocation().getSegmentClearance()
+//                                    - trainCarriage.getLength()) * scaleDownFactor,
+//                            yNorthbound - trainGraphicsDiameter * 0.5,
+//                            trainCarriage.getLength() * scaleDownFactor,
+//                            trainGraphicsDiameter
+//                    );
+//                }
+//            }
+//
+//            // Draw the trains on the segments, if there are any
+//            synchronized (southboundSegment.getTrainQueue()) {
+//                TrainQueue trainQueue = southboundSegment.getTrainQueue();
+//
+//                TrainCarriage trainCarriage;
+//
+//                for (int carriageInSegmentIndex = 0; carriageInSegmentIndex < trainQueue.getTrainQueueSize();
+//                     carriageInSegmentIndex++) {
+//                    trainCarriage = trainQueue.getTrainCarriage(carriageInSegmentIndex);
+//
+//                    foregroundGraphicsContext.fillRect(
+//                            (x + southboundSegmentLength * scaleDownFactor)
+//                                    - trainCarriage.getTrainCarriageLocation().getSegmentClearance() * scaleDownFactor,
+//                            ySouthbound - trainGraphicsDiameter * 0.5,
+//                            trainCarriage.getLength() * scaleDownFactor,
+//                            trainGraphicsDiameter
+//                    );
+//                }
+//            }
+//        }
     }
 
     // Convert string colors to paint objects usable by the graphics library
