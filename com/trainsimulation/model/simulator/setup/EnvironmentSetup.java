@@ -1,7 +1,7 @@
 package com.trainsimulation.model.simulator.setup;
 
 import com.crowdsimulation.model.core.agent.passenger.movement.PassengerMovement;
-import com.crowdsimulation.model.core.agent.passenger.movement.RoutePlan;
+import com.crowdsimulation.model.core.agent.passenger.movement.PassengerTripInformation;
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.infrastructure.track.Junction;
 import com.trainsimulation.model.core.environment.infrastructure.track.PlatformHub;
@@ -18,8 +18,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalTime;
+import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 // A class used to set the environment of the simulation
@@ -153,7 +156,7 @@ public class EnvironmentSetup {
         trainSystem.getStations().addAll(stations);
 
         // Retrieve the passenger list for this train system
-        List<RoutePlan.PassengerTripInformation> passengerList = EnvironmentSetup.retrievePassengerList(trainSystem);
+        List<PassengerTripInformation> passengerList = EnvironmentSetup.retrievePassengerList(trainSystem);
         trainSystem.loadPassengerList(passengerList);
 
         // Connect all stations
@@ -317,14 +320,14 @@ public class EnvironmentSetup {
     }
 
     // Load a CSV file into a passenger list
-    private static List<RoutePlan.PassengerTripInformation> retrievePassengerList(TrainSystem trainSystem) {
+    private static List<PassengerTripInformation> retrievePassengerList(TrainSystem trainSystem) {
         // Denotes where the CSV file of the passenger list of the given train system name can be found
         String path
                 = "D:\\Documents\\Thesis\\Data\\Data\\Current\\OD and granular data\\Granular data\\Splits\\Jan 2019\\"
                 + trainSystem.getTrainSystemInformation().getName() + "\\Weekday\\"
                 + trainSystem.getTrainSystemInformation().getName() + "_list.csv";
 
-        List<RoutePlan.PassengerTripInformation> passengerList = new ArrayList<>();
+        List<PassengerTripInformation> passengerList = new ArrayList<>();
 
         try (BufferedReader bufferedReader = new BufferedReader(new FileReader(path))) {
             String line;
@@ -341,15 +344,15 @@ public class EnvironmentSetup {
 
                 String[] values = line.split(",");
 
-                RoutePlan.PassengerTripInformation passengerTripInformation;
+                PassengerTripInformation passengerTripInformation;
 
-                String entryTimeString = values[1];
-                String[] entryTimeComponents = entryTimeString.split(":");
+                String turnstileTapInTimeString = values[1];
+                String[] turnstileTapInTimeComponents = turnstileTapInTimeString.split(":");
 
-                LocalTime entryTime = LocalTime.of(
-                        Integer.parseInt(entryTimeComponents[0]),
-                        Integer.parseInt(entryTimeComponents[1]),
-                        Integer.parseInt(entryTimeComponents[2])
+                LocalTime turnstileTapInTime = LocalTime.of(
+                        Integer.parseInt(turnstileTapInTimeComponents[0]),
+                        Integer.parseInt(turnstileTapInTimeComponents[1]),
+                        Integer.parseInt(turnstileTapInTimeComponents[2])
                 );
 
                 String cardNumber = values[2];
@@ -386,8 +389,8 @@ public class EnvironmentSetup {
                         ChronoUnit.SECONDS
                 );
 
-                passengerTripInformation = new RoutePlan.PassengerTripInformation(
-                        entryTime,
+                passengerTripInformation = new PassengerTripInformation(
+                        turnstileTapInTime,
                         cardNumber,
                         isStoredValue,
                         entryStation,
@@ -398,6 +401,18 @@ public class EnvironmentSetup {
 
                 passengerList.add(passengerTripInformation);
             }
+
+            // Finally, sort the created list according to the approximated station entry time
+            passengerList.sort(new Comparator<PassengerTripInformation>() {
+                public int compare(PassengerTripInformation o1, PassengerTripInformation o2) {
+                    long secondsDifference = Duration.between(
+                            o2.getApproximateStationEntryTime(),
+                            o1.getApproximateStationEntryTime()
+                    ).getSeconds();
+
+                    return (int) secondsDifference;
+                }
+            });
         } catch (IOException ex) {
             ex.printStackTrace();
         }

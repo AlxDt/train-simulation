@@ -1,7 +1,7 @@
 package com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset;
 
 import com.crowdsimulation.controller.controls.feature.main.MainScreenController;
-import com.crowdsimulation.model.core.agent.passenger.movement.RoutePlan;
+import com.crowdsimulation.model.core.agent.passenger.movement.PassengerTripInformation;
 import com.crowdsimulation.model.core.environment.station.Floor;
 import com.crowdsimulation.model.core.environment.station.patch.patchobject.passable.gate.StationGate;
 import com.trainsimulation.model.core.environment.TrainSystem;
@@ -71,7 +71,7 @@ public class Station extends StationSet {
 
     // TODO: Offload to station gate itself
     // Denotes the backlogs of the station gates of this station
-    private final HashMap<StationGate, List<RoutePlan.PassengerTripInformation>> passengerBacklogs;
+    private final HashMap<StationGate, List<PassengerTripInformation>> passengerBacklogs;
 
     // Initialize a thread pool to run floors in parallel
     private ExecutorService floorExecutorService;
@@ -172,7 +172,7 @@ public class Station extends StationSet {
         this.floorExecutorService = Executors.newFixedThreadPool(threads);
     }
 
-    public HashMap<StationGate, List<RoutePlan.PassengerTripInformation>> getPassengerBacklogs() {
+    public HashMap<StationGate, List<PassengerTripInformation>> getPassengerBacklogs() {
         return passengerBacklogs;
     }
 

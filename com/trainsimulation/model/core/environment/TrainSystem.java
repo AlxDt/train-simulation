@@ -1,6 +1,6 @@
 package com.trainsimulation.model.core.environment;
 
-import com.crowdsimulation.model.core.agent.passenger.movement.RoutePlan;
+import com.crowdsimulation.model.core.agent.passenger.movement.PassengerTripInformation;
 import com.trainsimulation.model.core.agent.passenger.Passenger;
 import com.trainsimulation.model.core.environment.trainservice.maintenance.Depot;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
@@ -34,7 +34,7 @@ public class TrainSystem {
 
     // Denotes the passenger list of this train system (the list of passengers to be spawned by the simulator, and the
     // time
-    private final List<RoutePlan.PassengerTripInformation> passengerList;
+    private final List<PassengerTripInformation> passengerList;
 
     public TrainSystem(TrainSystemInformation trainSystemInformation) {
         this.trainSystemInformation = trainSystemInformation;
@@ -146,17 +146,17 @@ public class TrainSystem {
         return stationName;
     }
 
-    public void loadPassengerList(List<RoutePlan.PassengerTripInformation> passengerList) {
+    public void loadPassengerList(List<PassengerTripInformation> passengerList) {
         this.passengerList.clear();
         this.passengerList.addAll(passengerList);
     }
 
     // Remove all trips that happen before the simulation starts
     public void removeTripsBeforeStartTime(SimulationTime simulationTime) {
-        List<RoutePlan.PassengerTripInformation> passengerTripsToRemove = new ArrayList<>();
+        List<PassengerTripInformation> passengerTripsToRemove = new ArrayList<>();
 
-        for (RoutePlan.PassengerTripInformation passengerTripInformation : this.passengerList) {
-            if (passengerTripInformation.getEntryTime().isBefore(simulationTime.getStartTime())) {
+        for (PassengerTripInformation passengerTripInformation : this.passengerList) {
+            if (passengerTripInformation.getApproximateStationEntryTime().isBefore(simulationTime.getStartTime())) {
                 passengerTripsToRemove.add(passengerTripInformation);
             } else {
                 break;
@@ -167,14 +167,14 @@ public class TrainSystem {
     }
 
     // Collects all passengers to be spawned in the next tick, given the current time
-    public HashMap<Station, List<RoutePlan.PassengerTripInformation>> getPassengersToSpawn(
+    public HashMap<Station, List<PassengerTripInformation>> getPassengersToSpawn(
             SimulationTime simulationTime
     ) {
-        HashMap<Station, List<RoutePlan.PassengerTripInformation>> stationListHashMap = new HashMap<>();
-        List<RoutePlan.PassengerTripInformation> passengerTripsDone = new ArrayList<>();
+        HashMap<Station, List<PassengerTripInformation>> stationListHashMap = new HashMap<>();
+        List<PassengerTripInformation> passengerTripsDone = new ArrayList<>();
 
-        for (RoutePlan.PassengerTripInformation passengerTripInformation : this.passengerList) {
-            if (passengerTripInformation.getEntryTime().equals(simulationTime.getTime())) {
+        for (PassengerTripInformation passengerTripInformation : this.passengerList) {
+            if (passengerTripInformation.getApproximateStationEntryTime().equals(simulationTime.getTime())) {
                 if (stationListHashMap.get(passengerTripInformation.getEntryStation()) == null) {
                     stationListHashMap.put(
                             passengerTripInformation.getEntryStation(),
@@ -185,7 +185,7 @@ public class TrainSystem {
                 stationListHashMap.get(passengerTripInformation.getEntryStation()).add(passengerTripInformation);
 
                 passengerTripsDone.add(passengerTripInformation);
-            } else if (passengerTripInformation.getEntryTime().isAfter(simulationTime.getTime())) {
+            } else if (passengerTripInformation.getApproximateStationEntryTime().isAfter(simulationTime.getTime())) {
                 break;
             }
         }

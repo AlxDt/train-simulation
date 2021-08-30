@@ -1,6 +1,6 @@
 package com.trainsimulation.model.simulator;
 
-import com.crowdsimulation.model.core.agent.passenger.movement.RoutePlan;
+import com.crowdsimulation.model.core.agent.passenger.movement.PassengerTripInformation;
 import com.trainsimulation.controller.Main;
 import com.trainsimulation.controller.graphics.GraphicsController;
 import com.trainsimulation.controller.screen.MainScreenController;
@@ -217,13 +217,13 @@ public class Simulator {
                 List<Station> stationsInTrainSystem = trainSystem.getStations();
 
                 // Collect all passengers to be spawned in this tick
-                HashMap<Station, List<RoutePlan.PassengerTripInformation>> passengersToSpawn
+                HashMap<Station, List<PassengerTripInformation>> passengersToSpawn
                         = trainSystem.getPassengersToSpawn(this.time);
 
                 // Update each station in parallel
                 for (Station station : stationsInTrainSystem) {
                     // Collect all passengers to be spawned in this station
-                    List<RoutePlan.PassengerTripInformation> passengersToSpawnInStation
+                    List<PassengerTripInformation> passengersToSpawnInStation
                             = passengersToSpawn.get(station);
 
                     // If, in this station, there are passengers to be spawned, spawn them
@@ -242,9 +242,9 @@ public class Simulator {
     // Contains the necessary operations to update stations in parallel
     public static class StationUpdateTask implements Callable<Void> {
         private final Station station;
-        private final List<RoutePlan.PassengerTripInformation> passengersToSpawn;
+        private final List<PassengerTripInformation> passengersToSpawn;
 
-        public StationUpdateTask(Station station, List<RoutePlan.PassengerTripInformation> passengersToSpawn) {
+        public StationUpdateTask(Station station, List<PassengerTripInformation> passengersToSpawn) {
             this.station = station;
             this.passengersToSpawn = passengersToSpawn;
         }
