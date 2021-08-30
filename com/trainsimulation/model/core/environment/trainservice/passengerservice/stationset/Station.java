@@ -1,6 +1,9 @@
 package com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset;
 
 import com.crowdsimulation.controller.controls.feature.main.MainScreenController;
+import com.crowdsimulation.model.core.agent.passenger.movement.RoutePlan;
+import com.crowdsimulation.model.core.environment.station.Floor;
+import com.crowdsimulation.model.core.environment.station.patch.patchobject.passable.gate.StationGate;
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.infrastructure.track.Track;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.StationProperty;
@@ -10,7 +13,6 @@ import com.trainsimulation.model.utility.Schedule;
 import com.trainsimulation.model.utility.StationCapacity;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -67,6 +69,13 @@ public class Station extends StationSet {
     // Represents the physical layout of the station with all the station objects and floors
     private com.crowdsimulation.model.core.environment.station.Station stationLayout;
 
+    // TODO: Offload to station gate itself
+    // Denotes the backlogs of the station gates of this station
+    private final HashMap<StationGate, List<RoutePlan.PassengerTripInformation>> passengerBacklogs;
+
+    // Initialize a thread pool to run floors in parallel
+    private ExecutorService floorExecutorService;
+
     public Station(TrainSystem trainSystem, StationsEntity stationsEntity) {
         super(trainSystem);
 
@@ -94,6 +103,9 @@ public class Station extends StationSet {
 
         this.stationPath = trainSystem.getTrainSystemInformation().getTrainSystemPath() + "\\stations\\" + this.name;
         this.stationLayout = null;
+
+        // TODO: Move to station gate itself
+        this.passengerBacklogs = new HashMap<>();
     }
 
     public String getName() {
@@ -134,6 +146,13 @@ public class Station extends StationSet {
 
     public void setStationLayout(com.crowdsimulation.model.core.environment.station.Station stationLayout) {
         this.stationLayout = stationLayout;
+
+        // TODO: Offload to station gate itself
+        for (Floor floor : this.stationLayout.getFloors()) {
+            for (StationGate stationGate : floor.getStationGates()) {
+                this.passengerBacklogs.put(stationGate, new ArrayList<>());
+            }
+        }
     }
 
     public int getDepotSequence() {
@@ -143,6 +162,18 @@ public class Station extends StationSet {
     @Override
     public TrainSystem getTrainSystem() {
         return trainSystem;
+    }
+
+    public ExecutorService getFloorExecutorService() {
+        return floorExecutorService;
+    }
+
+    public void setFloorExecutorService(int threads) {
+        this.floorExecutorService = Executors.newFixedThreadPool(threads);
+    }
+
+    public HashMap<StationGate, List<RoutePlan.PassengerTripInformation>> getPassengerBacklogs() {
+        return passengerBacklogs;
     }
 
     // Checks the time, inflow rate, current number of passengers in concourse and platform areas, and operational
@@ -196,6 +227,9 @@ public class Station extends StationSet {
 
             // Then set its parent
             station.setStationLayout(stationLayout);
+
+            // Set the thread pool of this station with the number of threads as the number of floors in the station
+            station.setFloorExecutorService(stationLayout.getFloors().size());
 
             System.out.println("Successfully loaded " + stationLayoutFile.getName());
 

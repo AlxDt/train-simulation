@@ -1,5 +1,7 @@
 package com.trainsimulation.model.simulator.setup;
 
+import com.crowdsimulation.model.core.agent.passenger.movement.PassengerMovement;
+import com.crowdsimulation.model.core.agent.passenger.movement.RoutePlan;
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.infrastructure.track.Junction;
 import com.trainsimulation.model.core.environment.infrastructure.track.PlatformHub;
@@ -11,6 +13,12 @@ import com.trainsimulation.model.db.DatabaseQueries;
 import com.trainsimulation.model.db.entity.EndSegmentsEntity;
 import com.trainsimulation.model.utility.TrainSystemInformation;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,6 +63,10 @@ public class EnvironmentSetup {
 
         // Add each to this train system's record
         trainSystem.getStations().addAll(stations);
+
+        // Retrieve the passenger list for this train system
+//        List<RoutePlan.PassengerTripInformation> passengerList = EnvironmentSetup.retrievePassengerList(trainSystem);
+//        trainSystem.loadPassengerList(passengerList);
 
         // Connect all stations
         for (int stationIndex = 1; stationIndex < stations.size(); stationIndex++) {
@@ -122,6 +134,8 @@ public class EnvironmentSetup {
         // Set the newly connected depot of the train system
         trainSystem.setDepot(depot);
 
+        System.out.println(trainSystemInformation.getName() + " setup done");
+
         // Return the newly created train system
         return trainSystem;
     }
@@ -137,6 +151,10 @@ public class EnvironmentSetup {
 
         // Add each to this train system's record
         trainSystem.getStations().addAll(stations);
+
+        // Retrieve the passenger list for this train system
+        List<RoutePlan.PassengerTripInformation> passengerList = EnvironmentSetup.retrievePassengerList(trainSystem);
+        trainSystem.loadPassengerList(passengerList);
 
         // Connect all stations
         for (int stationIndex = 1; stationIndex < stations.size(); stationIndex++) {
@@ -204,6 +222,8 @@ public class EnvironmentSetup {
         // Set the newly connected depot of the train system
         trainSystem.setDepot(depot);
 
+        System.out.println(trainSystemInformation.getName() + " setup done");
+
         // Return the newly created train system
         return trainSystem;
     }
@@ -219,6 +239,10 @@ public class EnvironmentSetup {
 
         // Add each to this train system's record
         trainSystem.getStations().addAll(stations);
+
+        // Retrieve the passenger list for this train system
+//        List<RoutePlan.PassengerTripInformation> passengerList = EnvironmentSetup.retrievePassengerList(trainSystem);
+//        trainSystem.loadPassengerList(passengerList);
 
         // Connect all stations
         for (int stationIndex = 1; stationIndex < stations.size(); stationIndex++) {
@@ -286,7 +310,98 @@ public class EnvironmentSetup {
         // Set the newly connected depot of the train system
         trainSystem.setDepot(depot);
 
+        System.out.println(trainSystemInformation.getName() + " setup done");
+
         // Return the newly created train system
         return trainSystem;
+    }
+
+    // Load a CSV file into a passenger list
+    private static List<RoutePlan.PassengerTripInformation> retrievePassengerList(TrainSystem trainSystem) {
+        // Denotes where the CSV file of the passenger list of the given train system name can be found
+        String path
+                = "D:\\Documents\\Thesis\\Data\\Data\\Current\\OD and granular data\\Granular data\\Splits\\Jan 2019\\"
+                + trainSystem.getTrainSystemInformation().getName() + "\\Weekday\\"
+                + trainSystem.getTrainSystemInformation().getName() + "_list.csv";
+
+        List<RoutePlan.PassengerTripInformation> passengerList = new ArrayList<>();
+
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(path))) {
+            String line;
+
+            boolean isFirstLine = true;
+
+            while ((line = bufferedReader.readLine()) != null) {
+                // Skip reading the header row
+                if (isFirstLine) {
+                    isFirstLine = false;
+
+                    continue;
+                }
+
+                String[] values = line.split(",");
+
+                RoutePlan.PassengerTripInformation passengerTripInformation;
+
+                String entryTimeString = values[1];
+                String[] entryTimeComponents = entryTimeString.split(":");
+
+                LocalTime entryTime = LocalTime.of(
+                        Integer.parseInt(entryTimeComponents[0]),
+                        Integer.parseInt(entryTimeComponents[1]),
+                        Integer.parseInt(entryTimeComponents[2])
+                );
+
+                String cardNumber = values[2];
+
+                boolean isStoredValue = values[3].equals("999");
+
+                Station entryStation = trainSystem.retrieveStation(values[4]);
+                Station exitStation = trainSystem.retrieveStation(values[5]);
+
+                PassengerMovement.TravelDirection travelDirection = null;
+
+                switch (trainSystem.getTrainSystemInformation().getName()) {
+                    case "LRT-1":
+                    case "MRT-3":
+                        if (entryStation.getSequence() < exitStation.getSequence()) {
+                            travelDirection = PassengerMovement.TravelDirection.SOUTHBOUND;
+                        } else {
+                            travelDirection = PassengerMovement.TravelDirection.NORTHBOUND;
+                        }
+
+                        break;
+                    case "LRT-2":
+                        if (entryStation.getSequence() < exitStation.getSequence()) {
+                            travelDirection = PassengerMovement.TravelDirection.EASTBOUND;
+                        } else {
+                            travelDirection = PassengerMovement.TravelDirection.WESTBOUND;
+                        }
+
+                        break;
+                }
+
+                Duration travelTime = Duration.of(
+                        Long.parseLong(values[6]),
+                        ChronoUnit.SECONDS
+                );
+
+                passengerTripInformation = new RoutePlan.PassengerTripInformation(
+                        entryTime,
+                        cardNumber,
+                        isStoredValue,
+                        entryStation,
+                        exitStation,
+                        travelDirection,
+                        travelTime
+                );
+
+                passengerList.add(passengerTripInformation);
+            }
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+        return passengerList;
     }
 }

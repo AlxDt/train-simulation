@@ -1,5 +1,6 @@
 package com.trainsimulation.model.simulator;
 
+import com.crowdsimulation.model.core.agent.passenger.movement.RoutePlan;
 import com.trainsimulation.controller.Main;
 import com.trainsimulation.controller.graphics.GraphicsController;
 import com.trainsimulation.controller.screen.MainScreenController;
@@ -9,6 +10,7 @@ import com.trainsimulation.model.db.DatabaseInterface;
 import com.trainsimulation.model.simulator.setup.EnvironmentSetup;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -43,7 +45,7 @@ public class Simulator {
     private final Semaphore playSemaphore;
 
     // Use the number of CPUs as the basis for the number of thread pools
-    private static final int NUM_CPUS = Runtime.getRuntime().availableProcessors();
+    public static final int NUM_CPUS = Runtime.getRuntime().availableProcessors();
 
     public Simulator() throws Throwable {
         this.databaseInterface = new DatabaseInterface();
@@ -109,6 +111,9 @@ public class Simulator {
     // Start the simulation and keep it running until the given ending time
     public void start() {
         new Thread(() -> {
+            // Initialize a thread pool to run stations in parallel
+            final ExecutorService stationExecutorService = Executors.newFixedThreadPool(Simulator.NUM_CPUS);
+
             // TODO: Implement simultaneous train systems
 
             // TODO: List all floors to update in parallel
@@ -125,9 +130,6 @@ public class Simulator {
                     while (this.running.get() && isTimeBeforeOrDuring) {
                         // Redraw the updated time
                         Main.mainScreenController.requestUpdateSimulationTime(this.time);
-
-                        // Initialize a thread pool to run stations in parallel
-                        final ExecutorService stationExecutorService = Executors.newFixedThreadPool(Simulator.NUM_CPUS);
 
                         // Manage all passenger-related updates
                         updateTrainSystems(stationExecutorService);
@@ -208,12 +210,24 @@ public class Simulator {
         for (TrainSystem trainSystem : this.trainSystems) {
             // TODO: Consider all train systems
             if (trainSystem.getTrainSystemInformation().getName().equals("LRT-2")) {
+                // Remove trips that happen before the simulation start time
+                trainSystem.removeTripsBeforeStartTime(this.time);
+
                 // Collect all stations in the train system
                 List<Station> stationsInTrainSystem = trainSystem.getStations();
 
+                // Collect all passengers to be spawned in this tick
+                HashMap<Station, List<RoutePlan.PassengerTripInformation>> passengersToSpawn
+                        = trainSystem.getPassengersToSpawn(this.time);
+
                 // Update each station in parallel
                 for (Station station : stationsInTrainSystem) {
-                    stationUpdateTasks.add(new StationUpdateTask(station));
+                    // Collect all passengers to be spawned in this station
+                    List<RoutePlan.PassengerTripInformation> passengersToSpawnInStation
+                            = passengersToSpawn.get(station);
+
+                    // If, in this station, there are passengers to be spawned, spawn them
+                    stationUpdateTasks.add(new StationUpdateTask(station, passengersToSpawnInStation));
                 }
 
                 // Update each station
@@ -228,19 +242,19 @@ public class Simulator {
     // Contains the necessary operations to update stations in parallel
     public static class StationUpdateTask implements Callable<Void> {
         private final Station station;
+        private final List<RoutePlan.PassengerTripInformation> passengersToSpawn;
 
-        public StationUpdateTask(Station station) {
+        public StationUpdateTask(Station station, List<RoutePlan.PassengerTripInformation> passengersToSpawn) {
             this.station = station;
+            this.passengersToSpawn = passengersToSpawn;
         }
 
         @Override
         public Void call() throws Exception {
-            // Initialize a thread pool to run floors in parallel
-            final ExecutorService floorExecutorService = Executors.newFixedThreadPool(Simulator.NUM_CPUS);
-
             com.crowdsimulation.model.simulator.Simulator.updatePassengersInStation(
-                    floorExecutorService,
-                    station.getStationLayout()
+                    this.station.getFloorExecutorService(),
+                    station.getStationLayout(),
+                    this.passengersToSpawn
             );
 
             return null;

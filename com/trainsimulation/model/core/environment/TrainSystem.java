@@ -1,14 +1,14 @@
 package com.trainsimulation.model.core.environment;
 
+import com.crowdsimulation.model.core.agent.passenger.movement.RoutePlan;
 import com.trainsimulation.model.core.agent.passenger.Passenger;
 import com.trainsimulation.model.core.environment.trainservice.maintenance.Depot;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
+import com.trainsimulation.model.simulator.SimulationTime;
 import com.trainsimulation.model.utility.TrainSystemInformation;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -32,6 +32,10 @@ public class TrainSystem {
     // Denotes the depot of this train system
     private Depot depot;
 
+    // Denotes the passenger list of this train system (the list of passengers to be spawned by the simulator, and the
+    // time
+    private final List<RoutePlan.PassengerTripInformation> passengerList;
+
     public TrainSystem(TrainSystemInformation trainSystemInformation) {
         this.trainSystemInformation = trainSystemInformation;
         this.stations = new ArrayList<>();
@@ -39,6 +43,7 @@ public class TrainSystem {
         this.activeTrains = new ArrayList<>();
         this.passengers = new ArrayList<>();
         this.depot = null;
+        this.passengerList = new ArrayList<>();
     }
 
     public TrainSystem(TrainSystemInformation trainSystemInformation, Depot depot) {
@@ -48,6 +53,7 @@ public class TrainSystem {
         this.activeTrains = new ArrayList<>();
         this.passengers = new ArrayList<>();
         this.depot = depot;
+        this.passengerList = new ArrayList<>();
     }
 
     public TrainSystemInformation getTrainSystemInformation() {
@@ -95,6 +101,98 @@ public class TrainSystem {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    // Retrieve a station using its name
+    public Station retrieveStation(String stationName) {
+        // Correct differences between the station names in the database and the station names in the passenger list
+        stationName = fixDiscrepancy(stationName);
+
+        for (Station station : this.stations) {
+            if (station.getName().equals(stationName)) {
+                return station;
+            }
+        }
+
+        return null;
+    }
+
+    // Fix known discrepancies between the station name in the database versus in the passenger list
+    private String fixDiscrepancy(String stationName) {
+        if (stationName.equals("V. Cruz")) {
+            stationName = "Vito Cruz";
+        } else if (stationName.equals("A. Santos")) {
+            stationName = "Abad Santos";
+        } else if (stationName.equals("Edsa")) {
+            stationName = "EDSA";
+        } else if (stationName.equals("P. Quirino")) {
+            stationName = "Quirino";
+        } else if (stationName.equals("P. Gil")) {
+            stationName = "Pedro Gil";
+        } else if (stationName.equals("Monumento")) {
+            stationName = "Yamaha Monumento";
+        } else if (stationName.equals("Boni")) {
+            stationName = "Boni Avenue";
+        } else if (stationName.equals("Shaw Blvd")) {
+            stationName = "Shaw Boulevard";
+        } else if (stationName.equals("Araneta-Cubao")) {
+            stationName = "Cubao";
+        } else if (stationName.equals("Cubao")) {
+            stationName = "Araneta Center-Cubao";
+        } else if (stationName.equals("Betty Go")) {
+            stationName = "Betty-Go Belmonte";
+        }
+
+        return stationName;
+    }
+
+    public void loadPassengerList(List<RoutePlan.PassengerTripInformation> passengerList) {
+        this.passengerList.clear();
+        this.passengerList.addAll(passengerList);
+    }
+
+    // Remove all trips that happen before the simulation starts
+    public void removeTripsBeforeStartTime(SimulationTime simulationTime) {
+        List<RoutePlan.PassengerTripInformation> passengerTripsToRemove = new ArrayList<>();
+
+        for (RoutePlan.PassengerTripInformation passengerTripInformation : this.passengerList) {
+            if (passengerTripInformation.getEntryTime().isBefore(simulationTime.getStartTime())) {
+                passengerTripsToRemove.add(passengerTripInformation);
+            } else {
+                break;
+            }
+        }
+
+        this.passengerList.removeAll(passengerTripsToRemove);
+    }
+
+    // Collects all passengers to be spawned in the next tick, given the current time
+    public HashMap<Station, List<RoutePlan.PassengerTripInformation>> getPassengersToSpawn(
+            SimulationTime simulationTime
+    ) {
+        HashMap<Station, List<RoutePlan.PassengerTripInformation>> stationListHashMap = new HashMap<>();
+        List<RoutePlan.PassengerTripInformation> passengerTripsDone = new ArrayList<>();
+
+        for (RoutePlan.PassengerTripInformation passengerTripInformation : this.passengerList) {
+            if (passengerTripInformation.getEntryTime().equals(simulationTime.getTime())) {
+                if (stationListHashMap.get(passengerTripInformation.getEntryStation()) == null) {
+                    stationListHashMap.put(
+                            passengerTripInformation.getEntryStation(),
+                            Collections.synchronizedList(new ArrayList<>())
+                    );
+                }
+
+                stationListHashMap.get(passengerTripInformation.getEntryStation()).add(passengerTripInformation);
+
+                passengerTripsDone.add(passengerTripInformation);
+            } else if (passengerTripInformation.getEntryTime().isAfter(simulationTime.getTime())) {
+                break;
+            }
+        }
+
+        this.passengerList.removeAll(passengerTripsDone);
+
+        return stationListHashMap;
     }
 
     @Override
