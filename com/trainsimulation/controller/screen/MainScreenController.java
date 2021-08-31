@@ -122,10 +122,10 @@ public class MainScreenController extends ScreenController {
     private TableColumn<TrainProperty, String> trainVelocityColumn;
 
     @FXML
-    private BorderPane simulationArea;
+    private TableColumn<TrainProperty, String> trainPassengersColumn;
 
-//    @FXML
-//    private TableColumn<Train.TrainProperty, String> trainPassengersColumn;
+    @FXML
+    private BorderPane simulationArea;
 
     // Get the active simulation context
     public static SimulationContext getActiveSimulationContext() {
@@ -155,6 +155,7 @@ public class MainScreenController extends ScreenController {
         trainNumberColumn.setCellValueFactory(trainNumber -> trainNumber.getValue().trainNumberProperty());
         trainStatusColumn.setCellValueFactory(trainStatus -> trainStatus.getValue().statusProperty());
         trainVelocityColumn.setCellValueFactory(trainVelocity -> trainVelocity.getValue().velocityProperty());
+        trainPassengersColumn.setCellValueFactory(trainPassengers -> trainPassengers.getValue().loadFactorProperty());
 
         // Prepare the table row bindings
         editTrainButton.disableProperty().bind(Bindings.isEmpty(activeTrainsTable.getSelectionModel().getSelectedItems()

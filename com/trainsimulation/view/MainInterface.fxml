@@ -61,9 +61,9 @@
                   <TableView fx:id="activeTrainsTable" disable="true" prefHeight="270.0" prefWidth="280.0">
                      <columns>
                         <TableColumn fx:id="trainNumberColumn" prefWidth="27.333251953125" text="#" />
-                        <TableColumn fx:id="trainStatusColumn" prefWidth="164.6666259765625" text="Status" />
-                        <TableColumn fx:id="trainVelocityColumn" prefWidth="121.3333740234375" text="Velocity" />
-                        <TableColumn fx:id="trainPassengersColumn" prefWidth="73.6666259765625" text="Passengers" />
+                        <TableColumn fx:id="trainPassengersColumn" prefWidth="164.6666259765625" text="Passengers" />
+                        <TableColumn fx:id="trainStatusColumn" prefWidth="73.6666259765625" text="Status" />
+                        <TableColumn fx:id="trainVelocityColumn" prefWidth="27.333251953125" text="Velocity" />
                      </columns>
                   </TableView>
                   <HBox alignment="CENTER" layoutX="30.0" layoutY="30.0" prefHeight="40.0" prefWidth="280.0" spacing="20.0">

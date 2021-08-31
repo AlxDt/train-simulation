@@ -1,12 +1,15 @@
 package com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset;
 
 import com.crowdsimulation.controller.controls.feature.main.MainScreenController;
+import com.crowdsimulation.model.core.agent.passenger.movement.PassengerMovement;
 import com.crowdsimulation.model.core.agent.passenger.movement.PassengerTripInformation;
 import com.crowdsimulation.model.core.environment.station.Floor;
 import com.crowdsimulation.model.core.environment.station.patch.patchobject.passable.gate.StationGate;
+import com.crowdsimulation.model.core.environment.station.patch.patchobject.passable.gate.TrainDoor;
 import com.trainsimulation.model.core.environment.TrainSystem;
 import com.trainsimulation.model.core.environment.infrastructure.track.Track;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.StationProperty;
+import com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset.Train;
 import com.trainsimulation.model.db.entity.StationsEntity;
 import com.trainsimulation.model.simulator.SimulationTime;
 import com.trainsimulation.model.utility.Schedule;
@@ -73,6 +76,15 @@ public class Station extends StationSet {
     // Denotes the backlogs of the station gates of this station
     private final HashMap<StationGate, List<PassengerTripInformation>> passengerBacklogs;
 
+    // TODO: Offload to station, and when validating
+    public final HashMap<
+            PassengerMovement.TravelDirection,
+            HashMap<TrainDoor, HashMap<TrainDoor.TrainDoorCarriage, Integer>>
+            > trainDoorCarriageMap;
+
+    // TODO: Offload to platform
+    public final HashMap<PassengerMovement.TravelDirection, Train> trains;
+
     // Initialize a thread pool to run floors in parallel
     private ExecutorService floorExecutorService;
 
@@ -104,8 +116,14 @@ public class Station extends StationSet {
         this.stationPath = trainSystem.getTrainSystemInformation().getTrainSystemPath() + "\\stations\\" + this.name;
         this.stationLayout = null;
 
-        // TODO: Move to station gate itself
+        // TODO: Offload to station gate itself
         this.passengerBacklogs = new HashMap<>();
+
+        // TODO: Offload to station, and when validating
+        this.trainDoorCarriageMap = new HashMap<>();
+
+        // TODO: Offload to platform
+        this.trains = new HashMap<>();
     }
 
     public String getName() {
@@ -148,10 +166,238 @@ public class Station extends StationSet {
         this.stationLayout = stationLayout;
 
         // TODO: Offload to station gate itself
+        // TODO: Offload to station, and when validating
         for (Floor floor : this.stationLayout.getFloors()) {
+            // Compile backlogs
             for (StationGate stationGate : floor.getStationGates()) {
                 this.passengerBacklogs.put(stationGate, new ArrayList<>());
             }
+
+            // Compile train doors
+            // TODO: Offload to database
+            assignCarriagesToTrainDoors(floor);
+        }
+
+        // TODO: Offload to platforms
+        if (
+                this.trainSystem.getTrainSystemInformation().getName().equals("LRT-1")
+                        || this.trainSystem.getTrainSystemInformation().getName().equals("MRT-3")
+        ) {
+            this.trains.put(PassengerMovement.TravelDirection.NORTHBOUND, null);
+            this.trains.put(PassengerMovement.TravelDirection.SOUTHBOUND, null);
+        } else {
+            this.trains.put(PassengerMovement.TravelDirection.WESTBOUND, null);
+            this.trains.put(PassengerMovement.TravelDirection.EASTBOUND, null);
+        }
+    }
+
+    private void assignCarriagesToTrainDoors(Floor floor) {
+        final HashMap<TrainDoor.TrainDoorCarriage, Integer> doorCountPerCarriage = new HashMap<>();
+
+        doorCountPerCarriage.put(TrainDoor.TrainDoorCarriage.LRT_1_FIRST_GENERATION, 5);
+        doorCountPerCarriage.put(TrainDoor.TrainDoorCarriage.LRT_1_SECOND_GENERATION, 4);
+        doorCountPerCarriage.put(TrainDoor.TrainDoorCarriage.LRT_1_THIRD_GENERATION, 4);
+
+        doorCountPerCarriage.put(TrainDoor.TrainDoorCarriage.LRT_2_FIRST_GENERATION, 5);
+
+        doorCountPerCarriage.put(TrainDoor.TrainDoorCarriage.MRT_3_FIRST_GENERATION, 5);
+        doorCountPerCarriage.put(TrainDoor.TrainDoorCarriage.MRT_3_SECOND_GENERATION, 5);
+
+        final String trainSystemName = trainSystem.getTrainSystemInformation().getName();
+
+        switch (trainSystemName) {
+            case "LRT-1":
+            case "MRT-3":
+                HashMap<PassengerMovement.TravelDirection, List<TrainDoor>> trainDoorsPerTravelDirectionLRT1MRT3
+                        = new HashMap<>();
+
+                trainDoorsPerTravelDirectionLRT1MRT3.put(PassengerMovement.TravelDirection.NORTHBOUND, new ArrayList<>());
+                trainDoorsPerTravelDirectionLRT1MRT3.put(PassengerMovement.TravelDirection.SOUTHBOUND, new ArrayList<>());
+
+                this.trainDoorCarriageMap.put(PassengerMovement.TravelDirection.NORTHBOUND, new HashMap<>());
+                this.trainDoorCarriageMap.put(PassengerMovement.TravelDirection.SOUTHBOUND, new HashMap<>());
+
+                // Compile train doors and their directions
+                for (TrainDoor trainDoor : floor.getTrainDoors()) {
+                    trainDoorsPerTravelDirectionLRT1MRT3.get(trainDoor.getPlatformDirection()).add(trainDoor);
+                }
+
+                // Per direction, train doors in ascending order of y-values
+                for (
+                        Map.Entry<PassengerMovement.TravelDirection, List<TrainDoor>> entry
+                        : trainDoorsPerTravelDirectionLRT1MRT3.entrySet()
+                ) {
+                    PassengerMovement.TravelDirection travelDirection = entry.getKey();
+                    List<TrainDoor> trainDoorsInThisDirection = entry.getValue();
+
+                    trainDoorsInThisDirection.sort(new Comparator<TrainDoor>() {
+                        @Override
+                        public int compare(TrainDoor o1, TrainDoor o2) {
+                            return
+                                    o1.getAmenityBlocks().get(0).getPatch().getMatrixPosition().getColumn()
+                                            - o2.getAmenityBlocks().get(0).getPatch().getMatrixPosition().getColumn();
+                        }
+                    });
+
+                    int countLRT11G = 0;
+                    int countLRT12G = 0;
+                    int countLRT13G = 0;
+
+                    int countMRT31G = 0;
+                    int countMRT32G = 0;
+
+                    // Iterate through this sorted list, and assign the respective carriage values
+                    for (TrainDoor trainDoor : trainDoorsInThisDirection) {
+                        HashMap<TrainDoor.TrainDoorCarriage, Integer> trainDoorCarriageIntegerHashMap
+                                = new HashMap<>();
+
+                        if (trainSystemName.equals("LRT-1")) {
+                            if (
+                                    trainDoor.getTrainDoorCarriagesSupported().contains(
+                                            TrainDoor.TrainDoorCarriage.LRT_1_FIRST_GENERATION
+                                    )
+                            ) {
+                                trainDoorCarriageIntegerHashMap.put(
+                                        TrainDoor.TrainDoorCarriage.LRT_1_FIRST_GENERATION,
+                                        countLRT11G / doorCountPerCarriage.get(
+                                                TrainDoor.TrainDoorCarriage.LRT_1_FIRST_GENERATION
+                                        )
+                                );
+
+                                countLRT11G++;
+                            }
+
+                            if (
+                                    trainDoor.getTrainDoorCarriagesSupported().contains(
+                                            TrainDoor.TrainDoorCarriage.LRT_1_SECOND_GENERATION
+                                    )
+                            ) {
+                                trainDoorCarriageIntegerHashMap.put(
+                                        TrainDoor.TrainDoorCarriage.LRT_1_SECOND_GENERATION,
+                                        countLRT12G / doorCountPerCarriage.get(
+                                                TrainDoor.TrainDoorCarriage.LRT_1_SECOND_GENERATION
+                                        )
+                                );
+
+                                countLRT12G++;
+                            }
+
+                            if (
+                                    trainDoor.getTrainDoorCarriagesSupported().contains(
+                                            TrainDoor.TrainDoorCarriage.LRT_1_SECOND_GENERATION
+                                    )
+                            ) {
+                                trainDoorCarriageIntegerHashMap.put(
+                                        TrainDoor.TrainDoorCarriage.LRT_1_THIRD_GENERATION,
+                                        countLRT13G / doorCountPerCarriage.get(
+                                                TrainDoor.TrainDoorCarriage.LRT_1_THIRD_GENERATION
+                                        )
+                                );
+
+                                countLRT13G++;
+                            }
+                        } else if (trainSystemName.equals("MRT-3")) {
+                            if (
+                                    trainDoor.getTrainDoorCarriagesSupported().contains(
+                                            TrainDoor.TrainDoorCarriage.MRT_3_FIRST_GENERATION
+                                    )
+                            ) {
+                                trainDoorCarriageIntegerHashMap.put(
+                                        TrainDoor.TrainDoorCarriage.MRT_3_FIRST_GENERATION,
+                                        countMRT31G / doorCountPerCarriage.get(
+                                                TrainDoor.TrainDoorCarriage.MRT_3_FIRST_GENERATION
+                                        )
+                                );
+
+                                countMRT31G++;
+                            }
+
+                            if (
+                                    trainDoor.getTrainDoorCarriagesSupported().contains(
+                                            TrainDoor.TrainDoorCarriage.MRT_3_FIRST_GENERATION
+                                    )
+                            ) {
+                                trainDoorCarriageIntegerHashMap.put(
+                                        TrainDoor.TrainDoorCarriage.MRT_3_FIRST_GENERATION,
+                                        countMRT32G / doorCountPerCarriage.get(
+                                                TrainDoor.TrainDoorCarriage.MRT_3_FIRST_GENERATION
+                                        )
+                                );
+
+                                countMRT32G++;
+                            }
+                        }
+
+                        this.trainDoorCarriageMap.get(travelDirection).put(
+                                trainDoor,
+                                trainDoorCarriageIntegerHashMap
+                        );
+                    }
+                }
+
+                break;
+            case "LRT-2":
+                HashMap<PassengerMovement.TravelDirection, List<TrainDoor>> trainDoorsPerTravelDirectionLRT2
+                        = new HashMap<>();
+
+                trainDoorsPerTravelDirectionLRT2.put(PassengerMovement.TravelDirection.WESTBOUND, new ArrayList<>());
+                trainDoorsPerTravelDirectionLRT2.put(PassengerMovement.TravelDirection.EASTBOUND, new ArrayList<>());
+
+                this.trainDoorCarriageMap.put(PassengerMovement.TravelDirection.WESTBOUND, new HashMap<>());
+                this.trainDoorCarriageMap.put(PassengerMovement.TravelDirection.EASTBOUND, new HashMap<>());
+
+                // Compile train doors and their directions
+                for (TrainDoor trainDoor : floor.getTrainDoors()) {
+                    trainDoorsPerTravelDirectionLRT2.get(trainDoor.getPlatformDirection()).add(trainDoor);
+                }
+
+                // Per direction, train doors in ascending order of y-values
+                for (
+                        Map.Entry<PassengerMovement.TravelDirection, List<TrainDoor>> entry
+                        : trainDoorsPerTravelDirectionLRT2.entrySet()
+                ) {
+                    PassengerMovement.TravelDirection travelDirection = entry.getKey();
+                    List<TrainDoor> trainDoorsInThisDirection = entry.getValue();
+
+                    trainDoorsInThisDirection.sort(new Comparator<TrainDoor>() {
+                        @Override
+                        public int compare(TrainDoor o1, TrainDoor o2) {
+                            return
+                                    o1.getAmenityBlocks().get(0).getPatch().getMatrixPosition().getColumn()
+                                            - o2.getAmenityBlocks().get(0).getPatch().getMatrixPosition().getColumn();
+                        }
+                    });
+
+                    int countLRT21G = 0;
+
+                    // Iterate through this sorted list, and assign the respective carriage values
+                    for (TrainDoor trainDoor : trainDoorsInThisDirection) {
+                        HashMap<TrainDoor.TrainDoorCarriage, Integer> trainDoorCarriageIntegerHashMap
+                                = new HashMap<>();
+
+                        if (
+                                trainDoor.getTrainDoorCarriagesSupported().contains(
+                                        TrainDoor.TrainDoorCarriage.LRT_2_FIRST_GENERATION
+                                )
+                        ) {
+                            trainDoorCarriageIntegerHashMap.put(
+                                    TrainDoor.TrainDoorCarriage.LRT_2_FIRST_GENERATION,
+                                    countLRT21G / doorCountPerCarriage.get(
+                                            TrainDoor.TrainDoorCarriage.LRT_2_FIRST_GENERATION
+                                    )
+                            );
+
+                            countLRT21G++;
+                        }
+
+                        this.trainDoorCarriageMap.get(travelDirection).put(
+                                trainDoor,
+                                trainDoorCarriageIntegerHashMap
+                        );
+                    }
+                }
+
+                break;
         }
     }
 
@@ -174,6 +420,14 @@ public class Station extends StationSet {
 
     public HashMap<StationGate, List<PassengerTripInformation>> getPassengerBacklogs() {
         return passengerBacklogs;
+    }
+
+    public HashMap<PassengerMovement.TravelDirection, HashMap<TrainDoor, HashMap<TrainDoor.TrainDoorCarriage, Integer>>> getTrainDoorCarriageMap() {
+        return trainDoorCarriageMap;
+    }
+
+    public HashMap<PassengerMovement.TravelDirection, Train> getTrains() {
+        return trains;
     }
 
     // Checks the time, inflow rate, current number of passengers in concourse and platform areas, and operational
@@ -201,6 +455,28 @@ public class Station extends StationSet {
     // Designates the station as not operational with the value of passable depending on the parameter
     public void closeStation(boolean passable) {
         // TODO: Implement station closing logic
+    }
+
+    // Have this station activate or deactivate the pertinent train doors so passengers could begin/finish riding the
+    // given train
+    public void toggleTrainDoors(Train train, PassengerMovement.TravelDirection travelDirection) {
+        // Get the class of the train
+        String trainClass = train.getTrainProperty().getCarriageClassName();
+
+        // Convert it to the classes as understood by the passengers
+        TrainDoor.TrainDoorCarriage trainDoorCarriage = TrainDoor.TrainDoorCarriage.getTrainDoorCarriage(trainClass);
+
+        // In the train's current station, open the train doors matching the direction and the available carriages
+        for (Floor floor : this.stationLayout.getFloors()) {
+            for (TrainDoor trainDoor : floor.getTrainDoors()) {
+                if (
+                        trainDoor.getPlatformDirection().equals(travelDirection)
+                                && trainDoor.getTrainDoorCarriagesSupported().contains(trainDoorCarriage)
+                ) {
+                    trainDoor.toggleTrainDoor();
+                }
+            }
+        }
     }
 
     // Contains the necessary operations to load a station in parallel

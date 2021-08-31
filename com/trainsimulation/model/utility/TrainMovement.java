@@ -357,6 +357,9 @@ public class TrainMovement {
                         // previous one
                         this.previousStoppedStation = currentStation;
 
+                        // Set the train on the current station
+                        this.train.arriveAt(this.currentStation);
+
                         // Request a draw
                         GraphicsController.requestDrawLineView(MainScreenController.getActiveSimulationContext().getLineViewCanvases(),
                                 MainScreenController.getActiveSimulationContext().getTrainSystem(),
@@ -414,8 +417,19 @@ public class TrainMovement {
         // Compute the location of each train carriage after moving forward by the specified velocity
         // Move each carriage one by one
         synchronized (this.train.getTrainCarriages()) {
-            // Because this train is moving, this train has no current station
-            this.currentStation = null;
+            // If the train is moving, and the current station is still set, check if the current station is part of the
+            // train's route
+            // If it is, have the train depart that station
+            if (
+                    this.currentStation != null
+                            && this.stationQueue.getOriginalStationList().contains(this.currentStation)
+            ) {
+                // Have the station close the train doors that have opened for this train
+                this.train.depart();
+
+                // Because this train is moving, this train has no current station
+                this.currentStation = null;
+            }
 
             List<TrainCarriage> trainCarriages = this.train.getTrainCarriages();
 

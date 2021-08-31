@@ -326,6 +326,7 @@ public class EnvironmentSetup {
                 = "D:\\Documents\\Thesis\\Data\\Data\\Current\\OD and granular data\\Granular data\\Splits\\Jan 2019\\"
                 + trainSystem.getTrainSystemInformation().getName() + "\\Weekday\\"
                 + trainSystem.getTrainSystemInformation().getName() + "_list.csv";
+//                + trainSystem.getTrainSystemInformation().getName() + "_list-test.csv";
 
         List<PassengerTripInformation> passengerList = new ArrayList<>();
 
@@ -389,17 +390,21 @@ public class EnvironmentSetup {
                         ChronoUnit.SECONDS
                 );
 
-                passengerTripInformation = new PassengerTripInformation(
-                        turnstileTapInTime,
-                        cardNumber,
-                        isStoredValue,
-                        entryStation,
-                        exitStation,
-                        travelDirection,
-                        travelTime
-                );
+                if (!entryStation.equals(exitStation)) {
+                    passengerTripInformation = new PassengerTripInformation(
+                            turnstileTapInTime,
+                            cardNumber,
+                            isStoredValue,
+                            entryStation,
+                            exitStation,
+                            travelDirection,
+                            travelTime
+                    );
 
-                passengerList.add(passengerTripInformation);
+                    passengerList.add(passengerTripInformation);
+                } else {
+                    System.out.println("Skipped card number " + cardNumber + " - invalid O/D");
+                }
             }
 
             // Finally, sort the created list according to the approximated station entry time

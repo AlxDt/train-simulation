@@ -251,11 +251,16 @@ public class Simulator {
 
         @Override
         public Void call() throws Exception {
-            com.crowdsimulation.model.simulator.Simulator.updatePassengersInStation(
-                    this.station.getFloorExecutorService(),
-                    station.getStationLayout(),
-                    this.passengersToSpawn
-            );
+            try {
+                com.crowdsimulation.model.simulator.Simulator.updatePassengersInStation(
+                        this.station.getFloorExecutorService(),
+                        station.getStationLayout(),
+                        this.passengersToSpawn,
+                        true
+                );
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
 
             return null;
         }

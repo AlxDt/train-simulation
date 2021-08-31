@@ -14,7 +14,8 @@ public class TrainProperty extends PassengerServiceProperty {
     private final SimpleStringProperty velocity = new SimpleStringProperty();
     private final SimpleStringProperty numberOfCarriages = new SimpleStringProperty();
     private final SimpleStringProperty carriageClassName = new SimpleStringProperty();
-    private final SimpleStringProperty totalPassengerCapacity = new SimpleStringProperty();
+    private final SimpleStringProperty capacity = new SimpleStringProperty();
+    private final SimpleStringProperty loadFactor = new SimpleStringProperty();
 //        private final IntegerProperty passengers;
 
     public TrainProperty(Train train) {
@@ -45,7 +46,7 @@ public class TrainProperty extends PassengerServiceProperty {
     }
 
     public SimpleStringProperty totalPassengerCapacity() {
-        return this.totalPassengerCapacity;
+        return this.capacity;
     }
 
     public String getTrainNumber() {
@@ -88,16 +89,24 @@ public class TrainProperty extends PassengerServiceProperty {
         this.carriageClassName.set(carriageClassName);
     }
 
-    public String getTotalPassengerCapacity() {
-        return totalPassengerCapacity.get();
+    public String getCapacity() {
+        return capacity.get();
     }
 
-    public void setTotalPassengerCapacity(String totalPassengerCapacity) {
-        this.totalPassengerCapacity.set(totalPassengerCapacity);
+    public void setCapacity(String capacity) {
+        this.capacity.set(capacity);
     }
 
-    public SimpleStringProperty totalPassengerCapacityProperty() {
-        return totalPassengerCapacity;
+    public String getLoadFactor() {
+        return loadFactor.get();
+    }
+
+    public void setLoadFactor(String loadFactor) {
+        this.loadFactor.set(loadFactor);
+    }
+
+    public SimpleStringProperty loadFactorProperty() {
+        return loadFactor;
     }
 
     // Update this train property
@@ -111,8 +120,10 @@ public class TrainProperty extends PassengerServiceProperty {
 
         this.numberOfCarriages.set(Integer.toString(numberOfCarriages));
         this.carriageClassName.set(trainHead.getClassName());
-        this.totalPassengerCapacity.set(Integer.toString(numberOfCarriages * trainHead.getCarriageCapacity()
+        this.capacity.set(Integer.toString(numberOfCarriages * trainHead.getCarriageCapacity()
                 .getCapacity()));
+
+        this.loadFactor.set(this.setLoadFactor(trainHead, numberOfCarriages));
     }
 
     // Set the status text to be displayed
@@ -144,5 +155,27 @@ public class TrainProperty extends PassengerServiceProperty {
         } else {
             return "Preparing";
         }
+    }
+
+    // Set the load factor text to be displayed
+    public String setLoadFactor(TrainCarriage trainHead, int numberOfCarriages) {
+        int totalPassengers = 0;
+        int totalCapacity = numberOfCarriages * trainHead.getCarriageCapacity().getCapacity();
+
+        StringBuilder carriageLoadFactorsString = new StringBuilder("|");
+
+        for (TrainCarriage trainCarriage : trainHead.getParentTrain().getTrainCarriages()) {
+            totalPassengers += trainCarriage.getPassengersInCarriage();
+
+            carriageLoadFactorsString.append(trainCarriage.getPassengersInCarriage()).append("|");
+        }
+
+        String loadFactor =
+                totalPassengers + "/" + totalCapacity
+                        + " ("
+                        + String.format("%.2f", (double) totalPassengers / totalCapacity) + "%"
+                        + ") " + carriageLoadFactorsString;
+
+        return loadFactor;
     }
 }

@@ -14,6 +14,10 @@ public class StationQueue {
         this.stationQueue = new ArrayList<>();
     }
 
+    public List<Station> getOriginalStationList() {
+        return originalStationList;
+    }
+
     public void setNewStations(List<Station> stationList, boolean isNearEnd) {
         this.originalStationList.clear();
         this.originalStationList.addAll(stationList);

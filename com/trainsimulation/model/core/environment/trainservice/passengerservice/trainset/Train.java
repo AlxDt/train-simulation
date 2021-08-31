@@ -1,7 +1,7 @@
 package com.trainsimulation.model.core.environment.trainservice.passengerservice.trainset;
 
+import com.crowdsimulation.model.core.agent.passenger.movement.PassengerMovement;
 import com.trainsimulation.controller.Main;
-import com.trainsimulation.controller.graphics.GraphicsController;
 import com.trainsimulation.controller.screen.MainScreenController;
 import com.trainsimulation.model.core.agent.Agent;
 import com.trainsimulation.model.core.environment.TrainSystem;
@@ -9,10 +9,10 @@ import com.trainsimulation.model.core.environment.infrastructure.track.Segment;
 import com.trainsimulation.model.core.environment.infrastructure.track.Track;
 import com.trainsimulation.model.core.environment.trainservice.maintenance.Depot;
 import com.trainsimulation.model.core.environment.trainservice.passengerservice.property.TrainProperty;
+import com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset.Station;
 import com.trainsimulation.model.db.DatabaseQueries;
 import com.trainsimulation.model.db.entity.TrainCarriagesEntity;
 import com.trainsimulation.model.db.entity.TrainsEntity;
-import com.trainsimulation.model.simulator.SimulationTime;
 import com.trainsimulation.model.simulator.Simulator;
 import com.trainsimulation.model.utility.TrainMovement;
 
@@ -61,8 +61,12 @@ public class Train extends TrainSet implements Agent {
             int quantity = trainCarriagesEntity.getQuantity();
 
             for (int count = 1; count <= quantity; count++) {
-                TrainCarriage trainCarriage = new TrainCarriage(this.getTrainSystem(),
-                        trainCarriagesEntity, this);
+                TrainCarriage trainCarriage = new TrainCarriage(
+                        this.getTrainSystem(),
+                        trainCarriagesEntity,
+                        this,
+                        count == 1
+                );
 
                 // Add the maximum velocity and waiting times
                 if (maxVelocity == null && deceleration == null) {
@@ -325,5 +329,52 @@ public class Train extends TrainSet implements Agent {
         // Update the UI elements
         Main.mainScreenController.requestUpdateUI(MainScreenController.getActiveSimulationContext().getTrainSystem(),
                 false);
+    }
+
+    // Set the train to this station
+    public void arriveAt(Station station) {
+        // Compile the passengers that will leave for this station
+        for (TrainCarriage trainCarriage : this.trainCarriages) {
+            trainCarriage.preparePassengersToAlight(station);
+        }
+
+        // Get the direction of the train
+        Track.Direction trainDirection = this.getTrainMovement().getActualDirection();
+
+        // Convert it to the travel direction as understood by the passengers
+        PassengerMovement.TravelDirection travelDirection = PassengerMovement.TravelDirection.convertToTravelDirection(
+                this.getTrainSystem(),
+                trainDirection
+        );
+
+        // Set the train on its current station at its current direction
+        station.getTrains().put(
+                travelDirection,
+                this
+        );
+
+        // Have the station allow the passengers with the same direction as this train
+        station.toggleTrainDoors(this, travelDirection);
+    }
+
+    // Have the given train leave its current station
+    public void depart() {
+        // Get the direction of the train
+        Track.Direction trainDirection = this.getTrainMovement().getActualDirection();
+
+        // Convert it to the travel direction as understood by the passengers
+        PassengerMovement.TravelDirection travelDirection = PassengerMovement.TravelDirection.convertToTravelDirection(
+                this.getTrainSystem(),
+                trainDirection
+        );
+
+        // Shut the doors of this station
+        this.getTrainMovement().getCurrentStation().toggleTrainDoors(this, travelDirection);
+
+        // Set the train on its current station at its current direction
+        this.getTrainMovement().getCurrentStation().getTrains().put(
+                travelDirection,
+                null
+        );
     }
 }

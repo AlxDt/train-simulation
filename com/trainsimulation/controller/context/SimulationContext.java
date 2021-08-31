@@ -176,11 +176,11 @@ public class SimulationContext {
         // TODO: Enable for other train systems and stations
         if (this.currentStation.getTrainSystem().getTrainSystemInformation().getName().equals("LRT-2")) {
             this.floors = this.currentStation.getStationLayout().getFloors();
+            this.floorIndex = this.floors.size() - 1;
         } else {
             this.floors = null;
+            this.floorIndex = 0;
         }
-
-        this.floorIndex = 0;
 
         // Change labels
         this.currentStationText.setText(this.currentStation.getName());
@@ -196,11 +196,11 @@ public class SimulationContext {
         // TODO: Enable for other train systems and stations
         if (this.currentStation.getTrainSystem().getTrainSystemInformation().getName().equals("LRT-2")) {
             this.floors = this.currentStation.getStationLayout().getFloors();
+            this.floorIndex = this.floors.size() - 1;
         } else {
             this.floors = null;
+            this.floorIndex = 0;
         }
-
-        this.floorIndex = 0;
 
         // Change labels
         this.currentStationText.setText(this.currentStation.getName());
@@ -231,11 +231,11 @@ public class SimulationContext {
         // TODO: Enable for other train systems and stations
         if (this.currentStation.getTrainSystem().getTrainSystemInformation().getName().equals("LRT-2")) {
             this.floors = this.currentStation.getStationLayout().getFloors();
+            this.floorIndex = this.floors.size() - 1;
         } else {
             this.floors = null;
+            this.floorIndex = 0;
         }
-
-        this.floorIndex = 0;
 
         // Change labels
         this.currentStationText.setText(this.currentStation.getName());
@@ -250,11 +250,11 @@ public class SimulationContext {
         // TODO: Enable for other train systems and stations
         if (this.currentStation.getTrainSystem().getTrainSystemInformation().getName().equals("LRT-2")) {
             this.floors = this.currentStation.getStationLayout().getFloors();
+            this.floorIndex = this.floors.size() - 1;
         } else {
             this.floors = null;
+            this.floorIndex = 0;
         }
-
-        this.floorIndex = 0;
 
         // Change labels
         this.currentStationText.setText(this.currentStation.getName());
