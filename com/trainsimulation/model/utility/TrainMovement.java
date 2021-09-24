@@ -1,5 +1,6 @@
 package com.trainsimulation.model.utility;
 
+import com.crowdsimulation.model.simulator.Simulator;
 import com.trainsimulation.controller.graphics.GraphicsController;
 import com.trainsimulation.controller.screen.MainScreenController;
 import com.trainsimulation.model.core.environment.infrastructure.track.Junction;
@@ -13,7 +14,6 @@ import com.trainsimulation.model.core.environment.trainservice.passengerservice.
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -39,7 +39,7 @@ public class TrainMovement {
     private final Train train;
 
     // Denotes the waiting time of the train (s)
-    private final int waitingTime;
+    private int waitingTime;
 
     // Denotes the deceleration speed of the train (m/s^2)
     private final double deceleration;
@@ -97,16 +97,26 @@ public class TrainMovement {
 
     public TrainMovement(final double maxVelocity, final double deceleration, final Train train) {
         // TODO: Make editable
-        final int waitingTime = 30;
+        final double baseWaitingTime = 18.56;
+        final double standardDeviationWaitingTime = 7.03;
+
         final int endWaitingTime = 300;
 
         this.deceleration = deceleration;
 
         // TODO: Remove artificial stochasticity
-        this.waitingTime = /*waitingTime*/waitingTime + (new Random().nextInt(2) * 2 - 1)
-                * new Random().nextInt((int) (0.5 * waitingTime));
+        this.waitingTime = (int) Math.round(
+                baseWaitingTime + Simulator.RANDOM_NUMBER_GENERATOR.nextGaussian() * standardDeviationWaitingTime
+        );
+//        this.waitingTime = (int) Math.round(baseWaitingTime);
+
+//         Just in case the waiting time goes below 5 seconds
+        if (this.waitingTime < 5) {
+            this.waitingTime = 5;
+        }
 
         this.endWaitingTime = endWaitingTime;
+
         this.maxVelocity = maxVelocity;
 
         this.currentStation = null;
@@ -129,6 +139,10 @@ public class TrainMovement {
 
     public int getWaitingTime() {
         return waitingTime;
+    }
+
+    public void setWaitingTime(int waitingTime) {
+        this.waitingTime = waitingTime;
     }
 
     public double getMaxVelocity() {

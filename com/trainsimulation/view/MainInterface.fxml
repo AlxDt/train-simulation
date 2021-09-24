@@ -154,7 +154,7 @@
                   <VBox alignment="CENTER" layoutX="92.0" layoutY="10.0" prefHeight="50.0" prefWidth="202.0">
                      <children>
                         <Label fx:id="simulationSpeedLabel" disable="true" prefHeight="34.0" prefWidth="161.0" text="Simulation speed (seconds)" textAlignment="CENTER" textFill="WHITE" wrapText="true" />
-                        <JFXSlider fx:id="simulationSpeedSlider" blockIncrement="30.0" disable="true" majorTickUnit="30.0" max="300.0" min="1.0" minorTickCount="30" snapToTicks="true" value="1.0" />
+                        <JFXSlider fx:id="simulationSpeedSlider" blockIncrement="30.0" disable="true" majorTickUnit="30.0" max="500.0" min="1.0" minorTickCount="30" snapToTicks="true" value="1.0" />
                      </children>
                   </VBox>
                   <Text fill="WHITE" layoutX="206.0" layoutY="40.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Fast">

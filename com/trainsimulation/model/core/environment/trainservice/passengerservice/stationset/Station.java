@@ -1,9 +1,10 @@
 package com.trainsimulation.model.core.environment.trainservice.passengerservice.stationset;
 
 import com.crowdsimulation.controller.controls.feature.main.MainScreenController;
+import com.crowdsimulation.model.core.agent.passenger.Passenger;
 import com.crowdsimulation.model.core.agent.passenger.movement.PassengerMovement;
-import com.crowdsimulation.model.core.agent.passenger.movement.PassengerTripInformation;
 import com.crowdsimulation.model.core.environment.station.Floor;
+import com.crowdsimulation.model.core.environment.station.patch.floorfield.QueueObject;
 import com.crowdsimulation.model.core.environment.station.patch.patchobject.passable.gate.StationGate;
 import com.crowdsimulation.model.core.environment.station.patch.patchobject.passable.gate.TrainDoor;
 import com.trainsimulation.model.core.environment.TrainSystem;
@@ -70,11 +71,11 @@ public class Station extends StationSet {
     private final String stationPath;
 
     // Represents the physical layout of the station with all the station objects and floors
-    private com.crowdsimulation.model.core.environment.station.Station stationLayout;
+    private com.crowdsimulation.model.core.environment.station.Station station;
 
     // TODO: Offload to station gate itself
     // Denotes the backlogs of the station gates of this station
-    private final HashMap<StationGate, List<PassengerTripInformation>> passengerBacklogs;
+    private final HashMap<StationGate, List<Passenger>> passengerBacklogs;
 
     // TODO: Offload to station, and when validating
     public final HashMap<
@@ -114,7 +115,7 @@ public class Station extends StationSet {
         this.trainSystem = trainSystem;
 
         this.stationPath = trainSystem.getTrainSystemInformation().getTrainSystemPath() + "\\stations\\" + this.name;
-        this.stationLayout = null;
+        this.station = null;
 
         // TODO: Offload to station gate itself
         this.passengerBacklogs = new HashMap<>();
@@ -159,18 +160,19 @@ public class Station extends StationSet {
     }
 
     public com.crowdsimulation.model.core.environment.station.Station getStationLayout() {
-        return stationLayout;
+        return station;
     }
 
-    public void setStationLayout(com.crowdsimulation.model.core.environment.station.Station stationLayout) {
-        this.stationLayout = stationLayout;
+    public void setStationLayout(com.crowdsimulation.model.core.environment.station.Station station) {
+        this.station = station;
+        this.station.setStation(this);
 
         // TODO: Offload to station gate itself
         // TODO: Offload to station, and when validating
-        for (Floor floor : this.stationLayout.getFloors()) {
+        for (Floor floor : this.station.getFloors()) {
             // Compile backlogs
             for (StationGate stationGate : floor.getStationGates()) {
-                this.passengerBacklogs.put(stationGate, new ArrayList<>());
+                this.passengerBacklogs.put(stationGate, Collections.synchronizedList(new ArrayList<>()));
             }
 
             // Compile train doors
@@ -194,7 +196,7 @@ public class Station extends StationSet {
     private void assignCarriagesToTrainDoors(Floor floor) {
         final HashMap<TrainDoor.TrainDoorCarriage, Integer> doorCountPerCarriage = new HashMap<>();
 
-        doorCountPerCarriage.put(TrainDoor.TrainDoorCarriage.LRT_1_FIRST_GENERATION, 5);
+        doorCountPerCarriage.put(TrainDoor.TrainDoorCarriage.LRT_1_FIRST_GENERATION, 4);
         doorCountPerCarriage.put(TrainDoor.TrainDoorCarriage.LRT_1_SECOND_GENERATION, 4);
         doorCountPerCarriage.put(TrainDoor.TrainDoorCarriage.LRT_1_THIRD_GENERATION, 4);
 
@@ -218,8 +220,10 @@ public class Station extends StationSet {
                 this.trainDoorCarriageMap.put(PassengerMovement.TravelDirection.SOUTHBOUND, new HashMap<>());
 
                 // Compile train doors and their directions
-                for (TrainDoor trainDoor : floor.getTrainDoors()) {
-                    trainDoorsPerTravelDirectionLRT1MRT3.get(trainDoor.getPlatformDirection()).add(trainDoor);
+                synchronized (floor.getTrainDoors()) {
+                    for (TrainDoor trainDoor : floor.getTrainDoors()) {
+                        trainDoorsPerTravelDirectionLRT1MRT3.get(trainDoor.getPlatformDirection()).add(trainDoor);
+                    }
                 }
 
                 // Per direction, train doors in ascending order of y-values
@@ -347,8 +351,10 @@ public class Station extends StationSet {
                 this.trainDoorCarriageMap.put(PassengerMovement.TravelDirection.EASTBOUND, new HashMap<>());
 
                 // Compile train doors and their directions
-                for (TrainDoor trainDoor : floor.getTrainDoors()) {
-                    trainDoorsPerTravelDirectionLRT2.get(trainDoor.getPlatformDirection()).add(trainDoor);
+                synchronized (floor.getTrainDoors()) {
+                    for (TrainDoor trainDoor : floor.getTrainDoors()) {
+                        trainDoorsPerTravelDirectionLRT2.get(trainDoor.getPlatformDirection()).add(trainDoor);
+                    }
                 }
 
                 // Per direction, train doors in ascending order of y-values
@@ -418,7 +424,7 @@ public class Station extends StationSet {
         this.floorExecutorService = Executors.newFixedThreadPool(threads);
     }
 
-    public HashMap<StationGate, List<PassengerTripInformation>> getPassengerBacklogs() {
+    public HashMap<StationGate, List<Passenger>> getPassengerBacklogs() {
         return passengerBacklogs;
     }
 
@@ -459,7 +465,7 @@ public class Station extends StationSet {
 
     // Have this station activate or deactivate the pertinent train doors so passengers could begin/finish riding the
     // given train
-    public void toggleTrainDoors(Train train, PassengerMovement.TravelDirection travelDirection) {
+    public int toggleTrainDoors(Train train, PassengerMovement.TravelDirection travelDirection) {
         // Get the class of the train
         String trainClass = train.getTrainProperty().getCarriageClassName();
 
@@ -467,15 +473,34 @@ public class Station extends StationSet {
         TrainDoor.TrainDoorCarriage trainDoorCarriage = TrainDoor.TrainDoorCarriage.getTrainDoorCarriage(trainClass);
 
         // In the train's current station, open the train doors matching the direction and the available carriages
-        for (Floor floor : this.stationLayout.getFloors()) {
-            for (TrainDoor trainDoor : floor.getTrainDoors()) {
-                if (
-                        trainDoor.getPlatformDirection().equals(travelDirection)
-                                && trainDoor.getTrainDoorCarriagesSupported().contains(trainDoorCarriage)
-                ) {
-                    trainDoor.toggleTrainDoor();
+        synchronized (this.station.getFloors()) {
+            int waitingPassengers = 0;
+
+            for (Floor floor : this.station.getFloors()) {
+                synchronized (floor.getTrainDoors()) {
+                    for (TrainDoor trainDoor : floor.getTrainDoors()) {
+                        if (
+                                trainDoor.getPlatformDirection().equals(travelDirection)
+                                        && trainDoor.getTrainDoorCarriagesSupported().contains(trainDoorCarriage)
+                        ) {
+                            if (trainDoor.isOpen()) {
+                                // Force the release of passengers before the door closes
+                                trainDoor.releasePassenger(true);
+                            }
+
+                            trainDoor.toggleTrainDoor();
+
+                            for (QueueObject queueObject : trainDoor.getQueueObjects().values()) {
+                                List<Passenger> passengersQueueing = new ArrayList<>(queueObject.getPassengersQueueing());
+
+                                waitingPassengers += passengersQueueing.size();
+                            }
+                        }
+                    }
                 }
             }
+
+            return waitingPassengers;
         }
     }
 
@@ -489,25 +514,32 @@ public class Station extends StationSet {
 
         @Override
         public Void call() throws Exception {
-            // Prepare the path where the station layout may be found
-            String stationLayoutPath
-                    = station.getStationPath() + "\\run\\"
-                    + station.getName()
-                    + com.crowdsimulation.model.core.environment.station.Station.STATION_LAYOUT_FILE_EXTENSION;
+            try {
+                // Prepare the path where the station layout may be found
+                String stationLayoutPath
+                        = this.station.getStationPath() + "\\run\\"
+                        + this.station.getName()
+                        + com.crowdsimulation.model.core.environment.station.Station.STATION_LAYOUT_FILE_EXTENSION;
 
-            File stationLayoutFile = new File(stationLayoutPath);
+                File stationLayoutFile = new File(stationLayoutPath);
 
-            // Load the station layout from the file
-            final com.crowdsimulation.model.core.environment.station.Station stationLayout
-                    = MainScreenController.loadStation(stationLayoutFile);
+                // Load the station layout from the file
+                final com.crowdsimulation.model.core.environment.station.Station station
+                        = MainScreenController.loadStation(stationLayoutFile);
 
-            // Then set its parent
-            station.setStationLayout(stationLayout);
+                // Set the name of the station to the name of its parent
+                station.setName(this.station.getName());
 
-            // Set the thread pool of this station with the number of threads as the number of floors in the station
-            station.setFloorExecutorService(stationLayout.getFloors().size());
+                // Then set its parent
+                this.station.setStationLayout(station);
 
-            System.out.println("Successfully loaded " + stationLayoutFile.getName());
+                // Set the thread pool of this station with the number of threads as the number of floors in the station
+                this.station.setFloorExecutorService(station.getFloors().size());
+
+                System.out.println("Successfully loaded " + stationLayoutFile.getName());
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
 
             return null;
         }

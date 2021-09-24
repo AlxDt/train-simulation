@@ -354,7 +354,62 @@ public class Train extends TrainSet implements Agent {
         );
 
         // Have the station allow the passengers with the same direction as this train
-        station.toggleTrainDoors(this, travelDirection);
+        int passengersAtPlatform = station.toggleTrainDoors(this, travelDirection);
+
+//        synchronized (station.getStationLayout().getPassengersInStation()) {
+        // Count the passengers at the platform going the direction of this train
+//        int relevantPassengersOnPlatform = 0;
+
+//            // Set the train's waiting time depending on the number of passengers on the platform
+//            // Get the floor where the train tracks are
+//            Floor platformFloor = null;
+//
+//            synchronized (station.getStationLayout().getFloors()) {
+//                for (Floor floor : station.getStationLayout().getFloors()) {
+//                    if (!floor.getTracks().isEmpty()) {
+//                        platformFloor = floor;
+//
+//                        break;
+//                    }
+//                }
+//            }
+//
+//            assert platformFloor != null;
+//
+////            synchronized (platformFloor.getPassengersInFloor()) {
+//            for (Passenger passenger : platformFloor.getPassengersInFloor()) {
+//                if (passenger.getPassengerMovement().getTravelDirection().equals(travelDirection)) {
+//                    relevantPassengersOnPlatform++;
+//                }
+//            }
+//            }
+
+//            for (Passenger passenger : station.getStationLayout().getPassengersInStation()) {
+//                if (passenger.getPassengerMovement().getTravelDirection().equals(travelDirection)) {
+//                    relevantPassengersOnPlatform++;
+//                }
+//            }
+
+        // Use the number of passengers on the platform to determine the waiting time of the train at the station
+        // 0 passengers = 11.14 s
+        // > 500 passengers = 30.3 s
+//        System.out.println(relevantPassengersOnPlatform);
+
+        // Estimate the number of passengers at the platform from the station's passenger count
+//        int estimatedPassengerPlatformCount = station.getStationLayout().getPassengersInStation().size();
+////        int stationPassengerCount = station.getStationLayout().getPassengersInStation().size();
+////        int estimatedPassengerCountOneDirection = stationPassengerCount / 2;
+////        int estimatedPassengerPlatformCount = (int) (estimatedPassengerCountOneDirection * 0.75);
+//
+        final int passengersOnPlatformLimit = 500;
+        passengersAtPlatform = Math.min(passengersAtPlatform, passengersOnPlatformLimit);
+
+        double newWaitingTime = 0.03832 * passengersAtPlatform + 11.14;
+
+        this.trainMovement.setWaitingTime((int) Math.round(newWaitingTime));
+
+//        System.out.println(passengersAtPlatform + " -> " + this.trainMovement.getWaitingTime() + " s");
+//        }
     }
 
     // Have the given train leave its current station
@@ -371,10 +426,13 @@ public class Train extends TrainSet implements Agent {
         // Shut the doors of this station
         this.getTrainMovement().getCurrentStation().toggleTrainDoors(this, travelDirection);
 
-        // Set the train on its current station at its current direction
+        // Remove the train from its current station at its current direction
         this.getTrainMovement().getCurrentStation().getTrains().put(
                 travelDirection,
                 null
         );
+
+        // Have the train log
+        Simulator.logTrain(this, Main.simulator.getTime().getTime());
     }
 }

@@ -11,6 +11,7 @@ import com.trainsimulation.model.core.environment.trainservice.passengerservice.
 import com.trainsimulation.model.db.DatabaseInterface;
 import com.trainsimulation.model.db.DatabaseQueries;
 import com.trainsimulation.model.db.entity.EndSegmentsEntity;
+import com.trainsimulation.model.simulator.Simulator;
 import com.trainsimulation.model.utility.TrainSystemInformation;
 
 import java.io.BufferedReader;
@@ -18,10 +19,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalTime;
-import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
@@ -37,19 +36,21 @@ public class EnvironmentSetup {
 
         // From each of the retrieved information about the train system, realize and create such train system
         for (TrainSystemInformation trainSystemInformation : trainSystemInformations) {
-            switch (trainSystemInformation.getName()) {
-                case "LRT-1":
-                    trainSystems.add(setupLRT1(databaseInterface, trainSystemInformation));
+            if (trainSystemInformation.getName().equals(Simulator.TRAIN_SYSTEM_TO_SIMULATE)) {
+                switch (trainSystemInformation.getName()) {
+                    case "LRT-1":
+//                        trainSystems.add(setupLRT1(databaseInterface, trainSystemInformation));
 
-                    break;
-                case "LRT-2":
-                    trainSystems.add(setupLRT2(databaseInterface, trainSystemInformation));
+                        break;
+                    case "LRT-2":
+                        trainSystems.add(setupLRT2(databaseInterface, trainSystemInformation));
 
-                    break;
-                case "MRT-3":
-                    trainSystems.add(setupMRT3(databaseInterface, trainSystemInformation));
+                        break;
+                    case "MRT-3":
+//                        trainSystems.add(setupMRT3(databaseInterface, trainSystemInformation));
 
-                    break;
+                        break;
+                }
             }
         }
 
@@ -68,8 +69,8 @@ public class EnvironmentSetup {
         trainSystem.getStations().addAll(stations);
 
         // Retrieve the passenger list for this train system
-//        List<RoutePlan.PassengerTripInformation> passengerList = EnvironmentSetup.retrievePassengerList(trainSystem);
-//        trainSystem.loadPassengerList(passengerList);
+        List<PassengerTripInformation> passengerList = EnvironmentSetup.retrievePassengerList(trainSystem);
+        trainSystem.loadPassengerList(passengerList);
 
         // Connect all stations
         for (int stationIndex = 1; stationIndex < stations.size(); stationIndex++) {
@@ -243,9 +244,9 @@ public class EnvironmentSetup {
         // Add each to this train system's record
         trainSystem.getStations().addAll(stations);
 
-        // Retrieve the passenger list for this train system
-//        List<RoutePlan.PassengerTripInformation> passengerList = EnvironmentSetup.retrievePassengerList(trainSystem);
-//        trainSystem.loadPassengerList(passengerList);
+//         Retrieve the passenger list for this train system
+        List<PassengerTripInformation> passengerList = EnvironmentSetup.retrievePassengerList(trainSystem);
+        trainSystem.loadPassengerList(passengerList);
 
         // Connect all stations
         for (int stationIndex = 1; stationIndex < stations.size(); stationIndex++) {
@@ -325,8 +326,12 @@ public class EnvironmentSetup {
         String path
                 = "D:\\Documents\\Thesis\\Data\\Data\\Current\\OD and granular data\\Granular data\\Splits\\Jan 2019\\"
                 + trainSystem.getTrainSystemInformation().getName() + "\\Weekday\\"
-                + trainSystem.getTrainSystemInformation().getName() + "_list.csv";
-//                + trainSystem.getTrainSystemInformation().getName() + "_list-test.csv";
+//                + trainSystem.getTrainSystemInformation().getName() + "_list_extended_889.csv";
+//                + trainSystem.getTrainSystemInformation().getName() + "_list_extended_1793.csv";
+//                + trainSystem.getTrainSystemInformation().getName() + "_list_extended_2712.csv";
+                + trainSystem.getTrainSystemInformation().getName() + "_list_extended_3646.csv";
+//                + trainSystem.getTrainSystemInformation().getName() + "_list_cleaned.csv";
+//                + trainSystem.getTrainSystemInformation().getName() + "_list_test.csv";
 
         List<PassengerTripInformation> passengerList = new ArrayList<>();
 
@@ -347,8 +352,12 @@ public class EnvironmentSetup {
 
                 PassengerTripInformation passengerTripInformation;
 
-                String turnstileTapInTimeString = values[1];
-                String[] turnstileTapInTimeComponents = turnstileTapInTimeString.split(":");
+                String tripIdentifier = values[1];
+                String[] tripIdentifierComponents = tripIdentifier.split("=");
+
+                String timeComponent = tripIdentifierComponents[0];
+
+                String[] turnstileTapInTimeComponents = timeComponent.split(":");
 
                 LocalTime turnstileTapInTime = LocalTime.of(
                         Integer.parseInt(turnstileTapInTimeComponents[0]),
@@ -356,12 +365,12 @@ public class EnvironmentSetup {
                         Integer.parseInt(turnstileTapInTimeComponents[2])
                 );
 
-                String cardNumber = values[2];
+                String cardNumber = tripIdentifierComponents[1];
 
-                boolean isStoredValue = values[3].equals("999");
+                boolean isStoredValue = values[2].equals("999");
 
-                Station entryStation = trainSystem.retrieveStation(values[4]);
-                Station exitStation = trainSystem.retrieveStation(values[5]);
+                Station entryStation = trainSystem.retrieveStation(values[3]);
+                Station exitStation = trainSystem.retrieveStation(values[4]);
 
                 PassengerMovement.TravelDirection travelDirection = null;
 
@@ -386,7 +395,7 @@ public class EnvironmentSetup {
                 }
 
                 Duration travelTime = Duration.of(
-                        Long.parseLong(values[6]),
+                        Long.parseLong(values[5]),
                         ChronoUnit.SECONDS
                 );
 
@@ -403,7 +412,7 @@ public class EnvironmentSetup {
 
                     passengerList.add(passengerTripInformation);
                 } else {
-                    System.out.println("Skipped card number " + cardNumber + " - invalid O/D");
+                    System.out.println("Skipped card number " + cardNumber + " - same O/D");
                 }
             }
 

@@ -174,13 +174,13 @@ public class SimulationContext {
 
         // Change floors
         // TODO: Enable for other train systems and stations
-        if (this.currentStation.getTrainSystem().getTrainSystemInformation().getName().equals("LRT-2")) {
-            this.floors = this.currentStation.getStationLayout().getFloors();
-            this.floorIndex = this.floors.size() - 1;
-        } else {
-            this.floors = null;
-            this.floorIndex = 0;
-        }
+//        if (this.currentStation.getTrainSystem().getTrainSystemInformation().getName().equals("MRT-3")) {
+        this.floors = this.currentStation.getStationLayout().getFloors();
+        this.floorIndex = this.floors.size() - 1;
+//        } else {
+//            this.floors = null;
+//            this.floorIndex = 0;
+//        }
 
         // Change labels
         this.currentStationText.setText(this.currentStation.getName());
@@ -193,14 +193,14 @@ public class SimulationContext {
         this.currentStation = this.trainSystem.getStations().get(this.stationIndex);
 
         // Change floors
-        // TODO: Enable for other train systems and stations
-        if (this.currentStation.getTrainSystem().getTrainSystemInformation().getName().equals("LRT-2")) {
-            this.floors = this.currentStation.getStationLayout().getFloors();
-            this.floorIndex = this.floors.size() - 1;
-        } else {
-            this.floors = null;
-            this.floorIndex = 0;
-        }
+//        // TODO: Enable for other train systems and stations
+//        if (this.currentStation.getTrainSystem().getTrainSystemInformation().getName().equals("MRT-3")) {
+        this.floors = this.currentStation.getStationLayout().getFloors();
+        this.floorIndex = this.floors.size() - 1;
+//        } else {
+//            this.floors = null;
+//            this.floorIndex = 0;
+//        }
 
         // Change labels
         this.currentStationText.setText(this.currentStation.getName());
@@ -229,13 +229,13 @@ public class SimulationContext {
         this.currentStation = this.trainSystem.getStations().get(this.stationIndex);
 
         // TODO: Enable for other train systems and stations
-        if (this.currentStation.getTrainSystem().getTrainSystemInformation().getName().equals("LRT-2")) {
-            this.floors = this.currentStation.getStationLayout().getFloors();
-            this.floorIndex = this.floors.size() - 1;
-        } else {
-            this.floors = null;
-            this.floorIndex = 0;
-        }
+//        if (this.currentStation.getTrainSystem().getTrainSystemInformation().getName().equals("MRT-3")) {
+        this.floors = this.currentStation.getStationLayout().getFloors();
+        this.floorIndex = this.floors.size() - 1;
+//        } else {
+//            this.floors = null;
+//            this.floorIndex = 0;
+//        }
 
         // Change labels
         this.currentStationText.setText(this.currentStation.getName());
@@ -248,13 +248,13 @@ public class SimulationContext {
 
         // Change floors
         // TODO: Enable for other train systems and stations
-        if (this.currentStation.getTrainSystem().getTrainSystemInformation().getName().equals("LRT-2")) {
-            this.floors = this.currentStation.getStationLayout().getFloors();
-            this.floorIndex = this.floors.size() - 1;
-        } else {
-            this.floors = null;
-            this.floorIndex = 0;
-        }
+//        if (this.currentStation.getTrainSystem().getTrainSystemInformation().getName().equals("MRT-3")) {
+        this.floors = this.currentStation.getStationLayout().getFloors();
+        this.floorIndex = this.floors.size() - 1;
+//        } else {
+//            this.floors = null;
+//            this.floorIndex = 0;
+//        }
 
         // Change labels
         this.currentStationText.setText(this.currentStation.getName());

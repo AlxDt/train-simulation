@@ -170,11 +170,14 @@ public class TrainProperty extends PassengerServiceProperty {
             carriageLoadFactorsString.append(trainCarriage.getPassengersInCarriage()).append("|");
         }
 
-        String loadFactor =
-                totalPassengers + "/" + totalCapacity
-                        + " ("
-                        + String.format("%.2f", (double) totalPassengers / totalCapacity) + "%"
-                        + ") " + carriageLoadFactorsString;
+//        String loadFactor =
+//                totalPassengers + "/" + totalCapacity
+//                        + " ("
+//                        + String.format("%.3f", (double) totalPassengers / totalCapacity)
+//                        + ") " + carriageLoadFactorsString;
+
+        String loadFactor = String.format("%.3f", (double) totalPassengers / totalCapacity)
+                + " (" + totalPassengers + "/" + totalCapacity + ") " + carriageLoadFactorsString;
 
         return loadFactor;
     }
